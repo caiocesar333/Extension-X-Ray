@@ -23,8 +23,8 @@ Rules identify evidence that merits review. A match is not a malware verdict.
 | `REP-NPM-001` | Medium | npm lifecycle script (`preinstall`, `install`, `postinstall`, or `prepare`) |
 | `REP-NPM-002` | Critical | Lifecycle script also contains network/download execution behavior |
 | `REP-DLX-001` | Critical | Download piped or chained directly into an interpreter |
-| `REP-CI-001` | Critical | `pull_request_target`, pull-request-head checkout, and command execution in one workflow |
-| `REP-CI-002` | High | Attacker-influenced GitHub event text interpolated directly into `run` |
+| `REP-CI-001` | Critical | `pull_request_target`, pull-request-head checkout, and command execution in the same job |
+| `REP-CI-002` | High | Attacker-influenced GitHub event text interpolated directly into inline or multiline `run` |
 | `REP-CI-003` | Medium | Third-party GitHub Action not pinned to a full 40-character commit SHA |
 | `REP-IDE-001` | Medium | Committed VS Code task with a command or dependency |
 | `REP-DEV-001` | High | Dev-container setup/start lifecycle command |
@@ -33,12 +33,14 @@ Rules identify evidence that merits review. A match is not a malware verdict.
 
 | Rule | Severity | Signal |
 | --- | --- | --- |
-| `CRYPTO-SECRET-001` | Critical | Private-key marker or recovery-phrase-like assignment; evidence is redacted |
+| `CRYPTO-SECRET-001` | Critical | Private-key marker or 12/15/18/21/24-word recovery-phrase-like assignment; evidence is redacted |
 | `CRYPTO-WALLET-001` | High | Reference to common wallet, keystore, or signing-identity storage |
 | `CRYPTO-TX-001` | Critical | Wallet-sensitive source and network capability in the same file |
 | `CRYPTO-CLIP-001` | Critical | Clipboard read/write plus a cryptocurrency address pattern in the same file |
 
 Combination rules raise review priority but still describe proximity, not a proven end-to-end data flow. Every finding carries a file/line when available, bounded evidence, confidence, possible impact, and an investigation step.
+
+Repository reports are capped at 500 combined native and repository-specific findings. When the cap is reached, the report records an explicit limitation.
 
 ## Adding a rule
 

@@ -6,9 +6,10 @@ interface UploadZoneProps {
   analyzing: boolean
   kind: ScanKind
   onAnalyze: (file: File) => void
+  onReject: (message: string) => void
 }
 
-export function UploadZone({ analyzing, kind, onAnalyze }: UploadZoneProps) {
+export function UploadZone({ analyzing, kind, onAnalyze, onReject }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const isRepository = kind === 'repository'
@@ -16,7 +17,12 @@ export function UploadZone({ analyzing, kind, onAnalyze }: UploadZoneProps) {
   const fileLabel = isRepository ? 'repository ZIP' : 'VSIX'
 
   const accept = (file?: File) => {
-    if (file && file.name.toLowerCase().endsWith(extension)) onAnalyze(file)
+    if (!file) return
+    if (file.name.toLowerCase().endsWith(extension)) {
+      onAnalyze(file)
+      return
+    }
+    onReject(`Select a ${fileLabel} file using the ${extension} extension.`)
   }
 
   return (

@@ -14,7 +14,7 @@ Resource limits are layered because ZIP metadata can lie: declared and actual ex
 
 ## Crypto Guard data handling
 
-Private-key markers and recovery-phrase-like assignments are high-priority review signals. Matching evidence is redacted before it enters finding identifiers, API responses, logs, dashboard state, or downloaded reports. Never test the tool using real wallet material. If genuine private material was committed, assume compromise, rotate to a new wallet, and purge repository history using an appropriate incident-response process.
+Private-key markers and recovery-phrase-like assignments with a standard 12, 15, 18, 21, or 24-word length are high-priority review signals. Matching evidence is redacted before it enters finding identifiers, API responses, logs, dashboard state, or downloaded reports. Never test the tool using real wallet material. If genuine private material was committed, assume compromise, rotate to a new wallet, and purge repository history using an appropriate incident-response process.
 
 Crypto correlation rules identify proximity between a sensitive source and a potential sink; they do not claim proven exfiltration. The clipboard rule similarly reports a review-worthy combination, not confirmed theft.
 
@@ -32,7 +32,7 @@ Report vulnerabilities privately to the repository owner with reproduction steps
 
 - Native pattern rules can produce false positives and false negatives.
 - Static analysis generally cannot prove control-flow reachability or actual transmission.
-- Dependency vulnerability and reputation feeds are not included in the offline v0.2.0 scope.
+- Dependency vulnerability and reputation feeds are not included in the offline v0.2.1 scope.
 - Source maps and dynamically constructed module names may be absent.
 - Native binaries are inventoried but not decompiled in this release.
 - A clean report is not a security guarantee.

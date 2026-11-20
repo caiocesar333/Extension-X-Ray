@@ -94,15 +94,31 @@ def _archive_sha256(path: Path) -> str:
 
 
 class SafeVsixInspector:
-    def __init__(self, limits: ArchiveLimits | None = None) -> None:
+    def __init__(
+        self,
+        limits: ArchiveLimits | None = None,
+        *,
+        artifact_label: str = "VSIX",
+        malformed_code: str = "malformed_vsix",
+        archive_format: str = "ZIP/VSIX",
+    ) -> None:
         self.limits = limits or ArchiveLimits.from_env()
+        self.artifact_label = artifact_label
+        self.malformed_code = malformed_code
+        self.archive_format = archive_format
 
     def extract(self, archive_path: Path, destination: Path) -> ExtractedVsix:
         compressed_bytes = archive_path.stat().st_size
         if compressed_bytes > self.limits.max_upload_bytes:
-            raise UnsafeArchiveError("upload_too_large", "VSIX exceeds the upload size limit")
+            raise UnsafeArchiveError(
+                "upload_too_large",
+                f"{self.artifact_label} exceeds the upload size limit",
+            )
         if not zipfile.is_zipfile(archive_path):
-            raise UnsafeArchiveError("malformed_vsix", "The uploaded file is not a valid ZIP/VSIX archive")
+            raise UnsafeArchiveError(
+                self.malformed_code,
+                f"The uploaded file is not a valid {self.archive_format} archive",
+            )
 
         destination.mkdir(parents=True, exist_ok=False)
         destination_root = destination.resolve()
@@ -115,7 +131,10 @@ class SafeVsixInspector:
             with zipfile.ZipFile(archive_path) as archive:
                 entries = archive.infolist()
                 if len(entries) > self.limits.max_entries:
-                    raise UnsafeArchiveError("too_many_entries", "VSIX contains too many archive entries")
+                    raise UnsafeArchiveError(
+                        "too_many_entries",
+                        f"{self.artifact_label} contains too many archive entries",
+                    )
                 for info in entries:
                     _validate_entry_type(info)
                     safe_path = _safe_member_path(info.filename)
@@ -123,7 +142,7 @@ class SafeVsixInspector:
                     if identity in seen_paths:
                         raise UnsafeArchiveError(
                             "duplicate_path",
-                            f"VSIX contains a duplicate or case-colliding path: {safe_path!r}",
+                            f"{self.artifact_label} contains a duplicate or case-colliding path: {safe_path!r}",
                         )
                     seen_paths.add(identity)
 
@@ -140,7 +159,7 @@ class SafeVsixInspector:
                     if total_declared > self.limits.max_total_uncompressed_bytes:
                         raise UnsafeArchiveError(
                             "decompression_limit",
-                            "VSIX exceeds the total decompression limit",
+                            f"{self.artifact_label} exceeds the total decompression limit",
                         )
                     ratio = info.file_size / max(info.compress_size, 1)
                     if info.file_size >= 64 * 1024 and ratio > self.limits.max_compression_ratio:
@@ -182,12 +201,21 @@ class SafeVsixInspector:
                         )
                     )
         except (zipfile.BadZipFile, RuntimeError, EOFError) as exc:
-            raise UnsafeArchiveError("malformed_vsix", "The VSIX archive could not be read safely") from exc
+            raise UnsafeArchiveError(
+                self.malformed_code,
+                f"The {self.artifact_label} archive could not be read safely",
+            ) from exc
         except OSError as exc:
-            raise UnsafeArchiveError("archive_io_error", "The VSIX archive could not be extracted") from exc
+            raise UnsafeArchiveError(
+                "archive_io_error",
+                f"The {self.artifact_label} archive could not be extracted",
+            ) from exc
 
         if not files:
-            raise UnsafeArchiveError("empty_archive", "The VSIX archive contains no files")
+            raise UnsafeArchiveError(
+                "empty_archive",
+                f"The {self.artifact_label} archive contains no files",
+            )
         files.sort(key=lambda entry: entry.path.casefold())
         ratio = total_actual / max(compressed_bytes, 1)
         return ExtractedVsix(

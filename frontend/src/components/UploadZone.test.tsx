@@ -4,23 +4,27 @@ import { UploadZone } from './UploadZone'
 
 test('accepts a VSIX file selected by the user', async () => {
   const onAnalyze = vi.fn()
-  render(<UploadZone analyzing={false} kind="extension" onAnalyze={onAnalyze} />)
+  const onReject = vi.fn()
+  render(<UploadZone analyzing={false} kind="extension" onAnalyze={onAnalyze} onReject={onReject} />)
 
   const file = new File(['fixture'], 'fixture.vsix', { type: 'application/octet-stream' })
   fireEvent.change(screen.getByLabelText('Choose VSIX file'), { target: { files: [file] } })
 
   expect(onAnalyze).toHaveBeenCalledWith(file)
+  expect(onReject).not.toHaveBeenCalled()
   expect(screen.getByText('No execution · No cloud upload · 25 MiB default limit')).toBeInTheDocument()
 })
 
 test('accepts a repository ZIP and rejects a VSIX in repository mode', () => {
   const onAnalyze = vi.fn()
-  render(<UploadZone analyzing={false} kind="repository" onAnalyze={onAnalyze} />)
+  const onReject = vi.fn()
+  render(<UploadZone analyzing={false} kind="repository" onAnalyze={onAnalyze} onReject={onReject} />)
 
   const input = screen.getByLabelText('Choose repository ZIP file')
   const wrongFile = new File(['fixture'], 'fixture.vsix')
   const repository = new File(['fixture'], 'fixture.zip', { type: 'application/zip' })
   fireEvent.change(input, { target: { files: [wrongFile] } })
+  expect(onReject).toHaveBeenCalledWith('Select a repository ZIP file using the .zip extension.')
   fireEvent.change(input, { target: { files: [repository] } })
 
   expect(onAnalyze).toHaveBeenCalledTimes(1)

@@ -1,19 +1,20 @@
 # Extension X-Ray
 
-Extension X-Ray v0.2.0 is a local-first static security analyzer for two artifact types:
+Extension X-Ray v0.2.1 is a local-first static security analyzer for two artifact types:
 
 - Visual Studio Code and Cursor `.vsix` packages;
 - source repository `.zip` archives, including install hooks, GitHub Actions, editor/dev-container automation, and crypto-wallet risk patterns.
 
 It produces evidence-backed reports without executing uploaded code, installing dependencies, running hooks, checking out submodules, or sending source to a remote service. Findings describe observed behavior and confidence; there is deliberately no generic “trust score.”
 
-## What v0.2.0 includes
+## What v0.2.1 includes
 
 - Bounded ZIP extraction with traversal, link, duplicate-path, entry-count, file-size, decompression, and compression-ratio defenses.
 - SHA-256 identity, bounded metadata, complete admitted-file inventory, and literal JavaScript/TypeScript module relationships.
 - Existing VSIX capability rules for process creation, dynamic execution, sensitive paths, environment access, network APIs, obfuscation, and dangerous combinations.
 - Repo X-Ray rules for npm lifecycle scripts, download-to-interpreter commands, privileged or injectable GitHub Actions, mutable action references, VS Code tasks, and dev-container lifecycle commands.
 - Crypto Guard signals for wallet paths, possible private material with redacted evidence, wallet/network colocation, and clipboard address replacement patterns.
+- Hardening for valid seed-phrase word counts, same-job GitHub Actions correlation, multiline workflow injection, bounded combined findings, artifact-specific errors, and visible upload rejection.
 - Optional REA 6.7 static JavaScript enrichment with strict timeouts, bounded source selection, structured parsing, and independent native fallback.
 - Responsive React/Tailwind dashboard with VSIX/repository modes, severity context, evidence, inventory, dependency graph, and JSON download.
 - Synthetic benign and suspicious fixtures plus backend and frontend regression tests.
@@ -104,7 +105,7 @@ npm run build
 - `GET /api/v1/repository-report-schema` — repository report JSON Schema
 - `GET /docs` — interactive local OpenAPI documentation
 
-Both report contracts use schema version `1.0.0` and include `analysis_kind` as a discriminator. The application version is `0.2.0`.
+Both report contracts use schema version `1.0.0` and include `analysis_kind` as a discriminator. The application version is `0.2.1`.
 
 ## Security model and limitations
 

@@ -8,7 +8,7 @@
 4. The selected analyzer reads bounded metadata: `extension/package.json` for VSIX or the shallowest non-`node_modules` `package.json` plus repository manifest inventory.
 5. The native source scanner reads bounded JavaScript/TypeScript and reconstructs literal imports. Repository mode also scans package scripts, workflows, editor/dev-container configuration, shell patterns, and crypto-related correlations.
 6. In `auto` or `required` mode, the REA adapter receives only the validated tree and bounded source list. It performs static JavaScript analysis; it does not run repository or extension code.
-7. Recognized REA graph data is merged with, but never replaces, native results. Errors become explicit status and limitations.
+7. Recognized REA graph data is merged with, but never replaces, native results. Errors become explicit status and limitations, and combined repository findings are capped at 500.
 8. Pydantic emits a discriminator-bearing report; the dashboard renders it and can download it unchanged.
 9. Upload and extraction directories are removed when the request ends, including error paths.
 

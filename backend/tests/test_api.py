@@ -102,3 +102,17 @@ def test_repository_endpoint_rejects_non_zip(monkeypatch) -> None:
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "invalid_file_type"
 
+
+def test_repository_endpoint_uses_repository_specific_archive_error(monkeypatch) -> None:
+    client = client_without_rea(monkeypatch)
+    response = client.post(
+        "/api/v1/analyze-repository",
+        files={"file": ("repository.zip", b"not a zip", "application/zip")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "malformed_repository",
+        "message": "The uploaded file is not a valid repository ZIP archive",
+    }
+

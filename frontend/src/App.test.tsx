@@ -40,3 +40,19 @@ test('analyzes a repository ZIP through the repository endpoint', async () => {
   expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/analyze-repository')
 })
 
+test('explains a rejected file without calling the API', async () => {
+  const fetchMock = vi.fn()
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Repository ZIP' }))
+  fireEvent.change(screen.getByLabelText('Choose repository ZIP file'), {
+    target: { files: [new File(['x'], 'repository.tar')] },
+  })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Select a repository ZIP file using the .zip extension.',
+  )
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+

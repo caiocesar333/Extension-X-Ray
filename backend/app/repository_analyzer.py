@@ -14,6 +14,8 @@ from .repository_metadata import read_repository_metadata
 from .repository_scanner import scan_repository
 from .scanner import scan_sources
 
+_MAX_COMBINED_FINDINGS = 500
+
 
 def _source_scope(files: list[FileEntry]) -> list[FileEntry]:
     return [
@@ -32,7 +34,12 @@ class RepositoryAnalyzer:
         rea: ReaAdapter | None = None,
     ) -> None:
         self.limits = limits or ArchiveLimits.from_env()
-        self.inspector = SafeVsixInspector(self.limits)
+        self.inspector = SafeVsixInspector(
+            self.limits,
+            artifact_label="repository ZIP",
+            malformed_code="malformed_repository",
+            archive_format="repository ZIP",
+        )
         self.rea = rea or ReaAdapter()
 
     def analyze(self, archive_path: Path, source_filename: str | None = None) -> RepositoryAnalysisReport:
@@ -47,7 +54,7 @@ class RepositoryAnalyzer:
             rea_result = self.rea.analyze(root, scoped_files)
             unique_findings = {finding.id: finding for finding in (*native.findings, *repository_scan.findings)}
             severity_order = {Severity.critical: 0, Severity.high: 1, Severity.medium: 2, Severity.low: 3, Severity.info: 4}
-            findings = sorted(
+            all_findings = sorted(
                 unique_findings.values(),
                 key=lambda finding: (
                     severity_order[finding.severity],
@@ -57,12 +64,17 @@ class RepositoryAnalyzer:
                 ),
             )
             limitations = [*native.limitations, *repository_scan.limitations]
+            findings = all_findings[:_MAX_COMBINED_FINDINGS]
+            if len(all_findings) > len(findings):
+                limitations.append(
+                    f"Combined repository findings were capped at {_MAX_COMBINED_FINDINGS} results."
+                )
             if rea_result.limitation:
                 limitations.append(rea_result.limitation)
             limitations.extend((
                 "Repository analysis is static and cannot prove runtime reachability or malicious intent.",
                 "Package managers, lifecycle scripts, hooks, submodules, builds, tests, and repository code were not executed.",
-                "Known-vulnerability and online reputation data are outside the v0.2.0 offline analysis scope.",
+                "Known-vulnerability and online reputation data are outside the current offline analysis scope.",
             ))
             counts = {severity: 0 for severity in Severity}
             for finding in findings:

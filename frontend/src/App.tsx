@@ -73,7 +73,7 @@ export default function App() {
                 ))}
               </div>
             </div>
-            <UploadZone analyzing={analyzing} kind={scanKind} onAnalyze={runAnalysis} />
+            <UploadZone analyzing={analyzing} kind={scanKind} onAnalyze={runAnalysis} onReject={setError} />
             {error ? <div role="alert" className="mx-auto mt-5 max-w-3xl rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">{error}</div> : null}
             <div className="mx-auto mt-8 grid max-w-5xl gap-4 text-sm md:grid-cols-3">
               {[['Safe ingestion', 'Traversal, links, malformed archives, and decompression abuse are blocked.'], ['Traceable signals', 'Every finding includes source evidence, impact, confidence, and guidance.'], ['Honest results', 'No generic trust score. Capabilities are context, not proof of malicious intent.']].map(([title, text], index) => <div key={title} className="rounded-xl border border-line/70 bg-panel/40 p-4"><span className="mb-3 block font-mono text-[10px] text-cyan">0{index + 1}</span><h3 className="font-medium text-slate-200">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-500">{text}</p></div>)}

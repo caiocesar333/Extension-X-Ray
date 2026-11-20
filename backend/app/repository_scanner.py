@@ -26,6 +26,8 @@ _MNEMONIC_ASSIGNMENT = re.compile(
     r"\b(?:seedPhrase|seed_phrase|mnemonic|recoveryPhrase)\b\s*[:=]\s*['\"]([^'\"\r\n]{40,500})['\"]",
     re.IGNORECASE,
 )
+_MNEMONIC_WORD_COUNTS = {12, 15, 18, 21, 24}
+_MNEMONIC_WORD = re.compile(r"[A-Za-z]{2,16}")
 _CLIPBOARD_READ = re.compile(r"(?:clipboard\s*\.\s*readText|readClipboard|Get-Clipboard)\s*\(?", re.IGNORECASE)
 _CLIPBOARD_WRITE = re.compile(r"(?:clipboard\s*\.\s*writeText|writeClipboard|Set-Clipboard)\s*\(?", re.IGNORECASE)
 _CRYPTO_ADDRESS = re.compile(r"(?:\b0x[a-fA-F0-9]{40}\b|\bbc1[a-zA-HJ-NP-Z0-9]{20,90}\b)")
@@ -62,6 +64,16 @@ def _redact(snippet: str) -> str:
             count=1,
         )
     return snippet
+
+
+def _mnemonic_assignment(text: str) -> re.Match[str] | None:
+    for match in _MNEMONIC_ASSIGNMENT.finditer(text):
+        words = match.group(1).split()
+        if len(words) in _MNEMONIC_WORD_COUNTS and all(
+            _MNEMONIC_WORD.fullmatch(word) for word in words
+        ):
+            return match
+    return None
 
 
 def _finding(
@@ -133,15 +145,103 @@ def _scan_package_json(path: str, text: str, findings: list[Finding]) -> None:
             ))
 
 
+def _workflow_job_blocks(text: str) -> list[tuple[int, str]]:
+    lines = text.splitlines(keepends=True)
+    offsets: list[int] = []
+    cursor = 0
+    for line in lines:
+        offsets.append(cursor)
+        cursor += len(line)
+
+    jobs_index: int | None = None
+    jobs_indent = 0
+    for index, line in enumerate(lines):
+        match = re.match(r"^(\s*)jobs\s*:\s*(?:#.*)?$", line.rstrip("\r\n"))
+        if match:
+            jobs_index = index
+            jobs_indent = len(match.group(1))
+            break
+    if jobs_index is None:
+        return []
+
+    starts: list[tuple[int, int]] = []
+    job_indent: int | None = None
+    for index in range(jobs_index + 1, len(lines)):
+        line = lines[index]
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if indent <= jobs_indent:
+            break
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+\s*:\s*(?:#.*)?", stripped):
+            continue
+        if job_indent is None:
+            job_indent = indent
+        if indent == job_indent:
+            starts.append((index, offsets[index]))
+
+    blocks: list[tuple[int, str]] = []
+    for position, (line_index, start) in enumerate(starts):
+        end = starts[position + 1][1] if position + 1 < len(starts) else len(text)
+        if position + 1 == len(starts):
+            for index in range(line_index + 1, len(lines)):
+                stripped = lines[index].strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                indent = len(lines[index]) - len(lines[index].lstrip(" "))
+                if indent <= jobs_indent:
+                    end = offsets[index]
+                    break
+        blocks.append((start, text[start:end]))
+    return blocks
+
+
+def _run_sections(text: str, base_offset: int = 0) -> list[tuple[int, str]]:
+    lines = text.splitlines(keepends=True)
+    sections: list[tuple[int, str]] = []
+    cursor = 0
+    for index, line in enumerate(lines):
+        match = re.match(r"^(\s*)(?:-\s*)?run\s*:\s*(.*)$", line.rstrip("\r\n"))
+        line_offset = cursor
+        cursor += len(line)
+        if not match:
+            continue
+        content = match.group(2).strip()
+        if not content or re.fullmatch(r"[>|][0-9+-]*", content):
+            block_indent = len(match.group(1))
+            following: list[str] = []
+            for candidate in lines[index + 1:]:
+                candidate_text = candidate.rstrip("\r\n")
+                if not candidate_text.strip():
+                    following.append(candidate_text)
+                    continue
+                indent = len(candidate) - len(candidate.lstrip(" "))
+                if indent <= block_indent:
+                    break
+                following.append(candidate_text)
+            content = "\n".join(following)
+        sections.append((base_offset + line_offset + match.start(), content))
+    return sections
+
+
 def _scan_workflow(path: str, text: str, findings: list[Finding]) -> None:
     pull_target = re.search(
         r"^\s*(?:pull_request_target\s*:|['\"]?on['\"]?\s*:\s*(?:\[[^\]\r\n]*\b)?pull_request_target\b)",
         text,
         re.MULTILINE,
     )
-    untrusted_ref = re.search(r"github\.event\.pull_request\.head\.(?:sha|ref)", text)
-    run_step = re.search(r"^\s*(?:-\s*)?run\s*:", text, re.MULTILINE)
-    if pull_target and untrusted_ref and run_step:
+    dangerous_job = next(
+        (
+            (offset, block)
+            for offset, block in _workflow_job_blocks(text)
+            if re.search(r"\buses\s*:\s*['\"]?actions/checkout@", block, re.IGNORECASE)
+            and re.search(r"github\.event\.pull_request\.head\.(?:sha|ref)", block)
+            and _run_sections(block, offset)
+        ),
+        None,
+    )
+    if pull_target and dangerous_job:
         _append(findings, _finding(
             rule_id="REP-CI-001",
             title="Privileged workflow executes pull-request code",
@@ -154,12 +254,18 @@ def _scan_workflow(path: str, text: str, findings: list[Finding]) -> None:
             text=text,
             offset=pull_target.start(),
             tags=("github-actions", "pwn-request", "secrets"),
-            summary="pull_request_target, pull-request head checkout, and a run step occur in the same workflow.",
+            summary="pull_request_target, pull-request head checkout, and a run step occur in the same job.",
         ))
-    injection = re.search(
-        r"^\s*(?:-\s*)?run\s*:[^\r\n]*(?:\$\{\{\s*github\.event\.(?:issue|pull_request|comment|head_commit)[^}]*\}\})",
-        text,
-        re.MULTILINE,
+    event_expression = re.compile(
+        r"\$\{\{\s*github\.(?:event\.(?:issue|pull_request|comment|head_commit|discussion|review|workflow_run)|head_ref)[^}]*\}\}",
+    )
+    injection = next(
+        (
+            (offset, section)
+            for offset, section in _run_sections(text)
+            if event_expression.search(section)
+        ),
+        None,
     )
     if injection:
         _append(findings, _finding(
@@ -172,7 +278,7 @@ def _scan_workflow(path: str, text: str, findings: list[Finding]) -> None:
             guidance="Pass the value through an environment variable and quote it in the selected shell.",
             path=path,
             text=text,
-            offset=injection.start(),
+            offset=injection[0],
             tags=("github-actions", "injection"),
             summary="A run step directly references attacker-influenced github.event data.",
         ))
@@ -233,7 +339,7 @@ def _scan_repository_config(path: str, text: str, findings: list[Finding]) -> No
 
 def _scan_crypto(path: str, text: str, findings: list[Finding]) -> None:
     private_key = _PRIVATE_KEY.search(text)
-    mnemonic = _MNEMONIC_ASSIGNMENT.search(text)
+    mnemonic = _mnemonic_assignment(text)
     wallet_path = _WALLET_PATH.search(text)
     network = _NETWORK.search(text)
     clipboard_read = _CLIPBOARD_READ.search(text)
