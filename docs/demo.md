@@ -8,40 +8,47 @@ From the repository root after backend installation:
 .\.venv\Scripts\python .\samples\generate_fixtures.py
 ```
 
-The generator creates two local fixtures. They contain no real credentials, live exfiltration destination, or harmful payload. `example.invalid` is reserved for documentation.
+The generator creates benign and suspicious VSIX files plus benign and suspicious repository ZIPs. They contain no real credentials, live exfiltration destination, or harmful payload. `example.invalid` is reserved for documentation, and the mnemonic-like text is synthetic.
 
 ## CLI path
 
 ```powershell
-.\.venv\Scripts\python -m app.cli .\samples\suspicious-extension.vsix --output .\reports\suspicious-report.json
-.\.venv\Scripts\python -m app.cli .\samples\benign-extension.vsix --no-rea --output .\reports\benign-fallback-report.json
+.\.venv\Scripts\python -m app.cli .\samples\suspicious-extension.vsix --output .\reports\suspicious-extension.json
+.\.venv\Scripts\python -m app.cli .\samples\benign-extension.vsix --no-rea --output .\reports\benign-extension.json
+.\.venv\Scripts\python -m app.cli .\samples\suspicious-repository.zip --kind repository --output .\reports\suspicious-repository.json
+.\.venv\Scripts\python -m app.cli .\samples\benign-repository.zip --kind repository --no-rea --output .\reports\benign-repository.json
 ```
 
-Expected suspicious report observations:
+Expected suspicious repository observations:
 
-- metadata for `synthetic-suspicious-extension`;
-- source locations for process, dynamic execution, environment, network, and sensitive-path rules;
-- explicit combination findings without claiming maliciousness;
-- a genuine REA completion/status when the CLI is available, otherwise an explicit fallback limitation;
-- a valid `1.0.0` report that round-trips through `AnalysisReport`.
+- `analysis_kind=repository` and metadata for `synthetic-crypto-stealer-patterns`;
+- critical lifecycle download/execution and privileged-workflow signals;
+- mutable Action, VS Code task, and dev-container findings;
+- wallet-path, wallet/network, clipboard, and redacted possible-secret findings;
+- explicit REA completion when available, otherwise a fallback limitation;
+- a valid schema `1.0.0` report that round-trips through `RepositoryAnalysisReport`.
 
-Expected benign report observations:
+Expected benign repository observations:
 
-- metadata, file inventory, hash, and module reference to `vscode`;
-- zero security-rule matches for the synthetic source;
-- `rea.status=disabled`, proving native fallback is independently usable.
+- JavaScript/npm ecosystem and manifest inventory;
+- the Action reference is an immutable synthetic full SHA;
+- zero repository security-rule matches;
+- `rea.status=disabled`, proving the native fallback works independently.
+
+The VSIX fixtures preserve the original analyzer behavior: the suspicious sample produces process, dynamic execution, environment, network, sensitive-path, and combination evidence, while the benign sample produces no findings.
 
 ## Dashboard path
 
-Start both development servers as documented in the README, open `http://localhost:5173`, and upload `samples/suspicious-extension.vsix`.
+Start both development servers from the README and open `http://localhost:5173`.
 
 Manual checks:
 
-1. Upload progress is visible and the extension summary appears.
-2. Severity distribution and counts match the findings table.
-3. Selecting a finding shows its exact evidence, location, impact, and guidance.
-4. File search filters the inventory.
-5. The dependency tab renders a static module graph.
-6. Download JSON produces the same report contract.
-7. At narrow viewport width, cards and evidence stack without horizontal page overflow.
+1. In **Extension VSIX** mode, upload `samples/suspicious-extension.vsix` and confirm the extension summary.
+2. Start a new scan, select **Repository ZIP**, and upload `samples/suspicious-repository.zip`.
+3. Confirm repository name, dependency/workflow metrics, ecosystem/script tags, and severity counts.
+4. Select findings and verify exact evidence, source location, impact, and guidance; the possible mnemonic must be redacted.
+5. Search the inventory and inspect the dependency tab.
+6. Download JSON and verify that `analysis_kind` and artifact-specific metadata are preserved.
+7. At a narrow viewport width, confirm cards and evidence stack without horizontal page overflow.
 
+Do not install dependencies or run any script from the suspicious fixture. The application does not require doing so.

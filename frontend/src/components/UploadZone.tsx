@@ -1,17 +1,22 @@
 import { useRef, useState } from 'react'
 import { FileArchive, ScanSearch, ShieldCheck } from 'lucide-react'
+import type { ScanKind } from '../types'
 
 interface UploadZoneProps {
   analyzing: boolean
+  kind: ScanKind
   onAnalyze: (file: File) => void
 }
 
-export function UploadZone({ analyzing, onAnalyze }: UploadZoneProps) {
+export function UploadZone({ analyzing, kind, onAnalyze }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  const isRepository = kind === 'repository'
+  const extension = isRepository ? '.zip' : '.vsix'
+  const fileLabel = isRepository ? 'repository ZIP' : 'VSIX'
 
   const accept = (file?: File) => {
-    if (file && file.name.toLowerCase().endsWith('.vsix')) onAnalyze(file)
+    if (file && file.name.toLowerCase().endsWith(extension)) onAnalyze(file)
   }
 
   return (
@@ -38,17 +43,21 @@ export function UploadZone({ analyzing, onAnalyze }: UploadZoneProps) {
         </div>
         <p className="mb-3 font-mono text-xs uppercase tracking-[0.28em] text-cyan">Local static inspection</p>
         <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
-          See what an extension can do <span className="text-slate-500">before you trust it.</span>
+          {isRepository ? 'Inspect a repository ' : 'See what an extension can do '}
+          <span className="text-slate-500">before you trust it.</span>
         </h2>
         <p className="mt-5 max-w-xl text-sm leading-6 text-slate-400 md:text-base">
-          Drop a VSIX to inspect capabilities, sensitive APIs, module relationships, and traceable evidence. Files stay on this machine.
+          {isRepository
+            ? 'Drop a source ZIP to inspect install hooks, CI workflows, workspace automation, wallet access, and correlated network behavior.'
+            : 'Drop a VSIX to inspect capabilities, sensitive APIs, module relationships, and traceable evidence.'}
+          {' '}Files stay on this machine.
         </p>
         <input
           ref={inputRef}
           className="sr-only"
           type="file"
-          accept=".vsix,application/octet-stream"
-          aria-label="Choose VSIX file"
+          accept={isRepository ? '.zip,application/zip' : '.vsix,application/octet-stream'}
+          aria-label={`Choose ${fileLabel} file`}
           disabled={analyzing}
           onChange={(event) => accept(event.target.files?.[0])}
         />
@@ -59,14 +68,13 @@ export function UploadZone({ analyzing, onAnalyze }: UploadZoneProps) {
           className="mt-8 inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-sm font-semibold text-ink transition hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60"
         >
           <ScanSearch size={18} />
-          {analyzing ? 'Analyzing safely…' : 'Select a VSIX'}
+          {analyzing ? 'Analyzing safely...' : `Select a ${fileLabel}`}
         </button>
         <div className="mt-8 flex items-center gap-2 text-xs text-slate-500">
           <ShieldCheck size={15} className="text-emerald-400" />
-          No execution · No cloud upload · 25 MiB default limit
+          No execution &middot; No cloud upload &middot; 25 MiB default limit
         </div>
       </div>
     </section>
   )
 }
-

@@ -1,5 +1,6 @@
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 export type Confidence = 'high' | 'medium' | 'low'
+export type ScanKind = 'extension' | 'repository'
 
 export interface Finding {
   id: string
@@ -30,12 +31,23 @@ export interface ModuleGraph {
   source: string
 }
 
-export interface AnalysisReport {
+interface BaseAnalysisReport {
   schema_version: string
   report_id: string
   generated_at: string
   source_filename: string
   sha256: string
+  archive: { compressed_bytes: number; uncompressed_bytes: number; file_count: number; compression_ratio: number }
+  severity_counts: Record<Severity, number>
+  findings: Finding[]
+  files: FileEntry[]
+  modules: ModuleGraph
+  rea: { available: boolean; used: boolean; status: string; version: string | null; message: string; evidence_id: string | null; analyzed_files: number }
+  limitations: string[]
+}
+
+export interface ExtensionAnalysisReport extends BaseAnalysisReport {
+  analysis_kind: 'extension'
   extension: {
     name: string
     publisher: string
@@ -53,25 +65,23 @@ export interface AnalysisReport {
     repository: string | null
     package_path: string
   }
-  archive: {
-    compressed_bytes: number
-    uncompressed_bytes: number
-    file_count: number
-    compression_ratio: number
-  }
-  severity_counts: Record<Severity, number>
-  findings: Finding[]
-  files: FileEntry[]
-  modules: ModuleGraph
-  rea: {
-    available: boolean
-    used: boolean
-    status: string
-    version: string | null
-    message: string
-    evidence_id: string | null
-    analyzed_files: number
-  }
-  limitations: string[]
 }
+
+export interface RepositoryAnalysisReport extends BaseAnalysisReport {
+  analysis_kind: 'repository'
+  repository: {
+    name: string
+    version: string | null
+    description: string | null
+    ecosystems: string[]
+    manifests: string[]
+    package_manager: string | null
+    scripts: Record<string, string>
+    dependency_count: number
+    workflow_count: number
+    security_config_files: string[]
+  }
+}
+
+export type AnalysisReport = ExtensionAnalysisReport | RepositoryAnalysisReport
 

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "extension-xray"
-version = "0.1.0"
-description = "Local-first static security analysis for VS Code extension packages"
+version = "0.2.0"
+description = "Local-first static security analysis for VSIX packages and source repositories"
 requires-python = ">=3.13"
 dependencies = [
   "fastapi>=0.115,<1",

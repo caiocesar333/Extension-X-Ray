@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -71,6 +71,19 @@ class ExtensionMetadata(BaseModel):
     package_path: str
 
 
+class RepositoryMetadata(BaseModel):
+    name: str
+    version: str | None = None
+    description: str | None = None
+    ecosystems: list[str] = Field(default_factory=list)
+    manifests: list[str] = Field(default_factory=list)
+    package_manager: str | None = None
+    scripts: dict[str, str] = Field(default_factory=dict)
+    dependency_count: int = 0
+    workflow_count: int = 0
+    security_config_files: list[str] = Field(default_factory=list)
+
+
 class FileEntry(BaseModel):
     path: str
     size: int
@@ -119,11 +132,31 @@ class AnalysisReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "1.0.0"
+    analysis_kind: Literal["extension"] = "extension"
     report_id: str
     generated_at: datetime
     source_filename: str
     sha256: str
     extension: ExtensionMetadata
+    archive: ArchiveSummary
+    severity_counts: dict[Severity, int]
+    findings: list[Finding]
+    files: list[FileEntry]
+    modules: ModuleGraph
+    rea: ReaStatus
+    limitations: list[str] = Field(default_factory=list)
+
+
+class RepositoryAnalysisReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "1.0.0"
+    analysis_kind: Literal["repository"] = "repository"
+    report_id: str
+    generated_at: datetime
+    source_filename: str
+    sha256: str
+    repository: RepositoryMetadata
     archive: ArchiveSummary
     severity_counts: dict[Severity, int]
     findings: list[Finding]

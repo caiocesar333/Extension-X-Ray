@@ -33,8 +33,10 @@ def _kind_for(path: str) -> str:
         return "typescript"
     if suffix in {".json", ".jsonc"}:
         return "json"
-    if suffix in {".md", ".txt", ".html", ".css", ".svg"}:
+    if suffix in {".md", ".txt", ".html", ".css", ".svg", ".yml", ".yaml", ".toml"}:
         return "text"
+    if suffix in {".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd"}:
+        return "script"
     if suffix in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}:
         return "image"
     if suffix in {".node", ".dll", ".so", ".dylib", ".exe"}:

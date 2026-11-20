@@ -1,17 +1,18 @@
 import { useState } from 'react'
-import { Activity, Archive, Download, FileCode2, RotateCcw, Shield, ShieldAlert, Sparkles } from 'lucide-react'
+import { Activity, Archive, Download, FileCode2, FolderGit2, RotateCcw, Shield, ShieldAlert, Sparkles } from 'lucide-react'
 import { FileInventory } from './components/FileInventory'
 import { FindingsPanel } from './components/FindingsPanel'
 import { ModuleGraph } from './components/ModuleGraph'
 import { SeverityOverview } from './components/SeverityOverview'
 import { UploadZone } from './components/UploadZone'
-import { analyzeExtension } from './services/api'
-import type { AnalysisReport } from './types'
+import { analyzeArtifact } from './services/api'
+import type { AnalysisReport, ScanKind } from './types'
 
 type Tab = 'findings' | 'files' | 'modules'
 
 export default function App() {
   const [report, setReport] = useState<AnalysisReport | null>(null)
+  const [scanKind, setScanKind] = useState<ScanKind>('extension')
   const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('findings')
@@ -20,7 +21,7 @@ export default function App() {
     setAnalyzing(true)
     setError(null)
     try {
-      setReport(await analyzeExtension(file))
+      setReport(await analyzeArtifact(file, scanKind))
       setTab('findings')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Analysis failed unexpectedly.')
@@ -44,7 +45,7 @@ export default function App() {
           </button>
           <div className="flex items-center gap-4">
             <span className="hidden items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 font-mono text-[10px] text-emerald-400 sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />LOCAL-FIRST</span>
-            <span className="hidden font-mono text-[10px] uppercase tracking-wider text-slate-600 md:inline">No extension execution</span>
+            <span className="hidden font-mono text-[10px] uppercase tracking-wider text-slate-600 md:inline">No artifact execution</span>
           </div>
         </div>
       </header>
@@ -52,8 +53,27 @@ export default function App() {
       <main className="mx-auto max-w-[1480px] px-5 py-10 lg:px-8">
         {!report ? (
           <div className="py-4 md:py-12">
-            <div className="mb-9 text-center"><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet/20 bg-violet/5 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-violet"><Sparkles size={12} /> VSIX behavior intelligence</div></div>
-            <UploadZone analyzing={analyzing} onAnalyze={runAnalysis} />
+            <div className="mb-7 text-center">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet/20 bg-violet/5 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-violet"><Sparkles size={12} /> Artifact behavior intelligence</div>
+              <div className="mx-auto flex w-fit rounded-xl border border-line bg-panel p-1" aria-label="Analysis type">
+                {([['extension', 'Extension VSIX'], ['repository', 'Repository ZIP']] as Array<[ScanKind, string]>).map(([kind, label]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={scanKind === kind}
+                    disabled={analyzing}
+                    onClick={() => {
+                      setScanKind(kind)
+                      setError(null)
+                    }}
+                    className={`rounded-lg px-4 py-2 text-xs font-medium transition ${scanKind === kind ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <UploadZone analyzing={analyzing} kind={scanKind} onAnalyze={runAnalysis} />
             {error ? <div role="alert" className="mx-auto mt-5 max-w-3xl rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">{error}</div> : null}
             <div className="mx-auto mt-8 grid max-w-5xl gap-4 text-sm md:grid-cols-3">
               {[['Safe ingestion', 'Traversal, links, malformed archives, and decompression abuse are blocked.'], ['Traceable signals', 'Every finding includes source evidence, impact, confidence, and guidance.'], ['Honest results', 'No generic trust score. Capabilities are context, not proof of malicious intent.']].map(([title, text], index) => <div key={title} className="rounded-xl border border-line/70 bg-panel/40 p-4"><span className="mb-3 block font-mono text-[10px] text-cyan">0{index + 1}</span><h3 className="font-medium text-slate-200">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-500">{text}</p></div>)}
@@ -63,19 +83,28 @@ export default function App() {
           <ReportDashboard report={report} tab={tab} setTab={setTab} onReset={reset} />
         )}
       </main>
-      <footer className="border-t border-line px-5 py-5 text-center font-mono text-[10px] uppercase tracking-wider text-slate-700">Defensive static analysis · never executes uploaded extensions</footer>
+      <footer className="border-t border-line px-5 py-5 text-center font-mono text-[10px] uppercase tracking-wider text-slate-700">Defensive static analysis &middot; never executes uploaded artifacts</footer>
     </div>
   )
 }
 
 function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisReport; tab: Tab; setTab: (tab: Tab) => void; onReset: () => void }) {
   const findingTotal = Object.values(report.severity_counts).reduce((sum, count) => sum + count, 0)
+  const isRepository = report.analysis_kind === 'repository'
+  const title = isRepository ? report.repository.name : report.extension.display_name ?? report.extension.name
+  const version = isRepository ? report.repository.version : report.extension.version
+  const subtitle = isRepository ? `Repository · ${report.source_filename}` : `${report.extension.publisher} · ${report.source_filename}`
+  const description = isRepository ? report.repository.description : report.extension.description
+  const contextTags = isRepository
+    ? [...report.repository.ecosystems, ...(report.repository.package_manager ? [report.repository.package_manager] : []), ...Object.keys(report.repository.scripts).map((script) => `script:${script}`)]
+    : report.extension.activation_events
   const download = () => {
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `${report.extension.publisher}.${report.extension.name}-${report.extension.version}-xray.json`
+    const identity = isRepository ? report.repository.name : `${report.extension.publisher}.${report.extension.name}`
+    anchor.download = `${identity.replace(/[^a-z0-9._-]+/gi, '-')}-${version ?? 'unversioned'}-xray.json`
     anchor.click()
     URL.revokeObjectURL(url)
   }
@@ -83,8 +112,8 @@ function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisRep
     <div>
       <section className="mb-6 flex flex-col justify-between gap-5 rounded-2xl border border-line bg-panel p-6 lg:flex-row lg:items-center">
         <div className="flex min-w-0 items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-violet/30 bg-violet/10 text-violet"><FileCode2 size={23} /></span>
-          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="truncate text-2xl font-semibold text-white">{report.extension.display_name ?? report.extension.name}</h1><span className="rounded-md bg-slate-800 px-2 py-1 font-mono text-[10px] text-slate-400">v{report.extension.version}</span></div><p className="mt-1 text-sm text-slate-500">{report.extension.publisher} · {report.source_filename}</p><p className="mt-2 truncate font-mono text-[10px] text-slate-700" title={report.sha256}>SHA-256 {report.sha256}</p></div>
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-violet/30 bg-violet/10 text-violet">{isRepository ? <FolderGit2 size={23} /> : <FileCode2 size={23} />}</span>
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="truncate text-2xl font-semibold text-white">{title}</h1>{version ? <span className="rounded-md bg-slate-800 px-2 py-1 font-mono text-[10px] text-slate-400">v{version}</span> : null}</div><p className="mt-1 text-sm text-slate-500">{subtitle}</p><p className="mt-2 truncate font-mono text-[10px] text-slate-700" title={report.sha256}>SHA-256 {report.sha256}</p></div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={onReset} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2.5 text-xs text-slate-300 hover:border-slate-500"><RotateCcw size={15} /> New scan</button>
@@ -95,13 +124,15 @@ function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisRep
       <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric icon={<ShieldAlert />} label="Security signals" value={String(findingTotal)} detail={findingTotal ? `${report.severity_counts.critical + report.severity_counts.high} elevated` : 'No rule matches'} />
         <Metric icon={<Archive />} label="Files inspected" value={String(report.archive.file_count)} detail={`${(report.archive.uncompressed_bytes / 1024).toFixed(1)} KiB expanded`} />
-        <Metric icon={<Activity />} label="Module relations" value={String(report.modules.edges.length)} detail={`${report.modules.nodes.length} graph nodes`} />
+        {isRepository
+          ? <Metric icon={<Activity />} label="Declared dependencies" value={String(report.repository.dependency_count)} detail={`${report.repository.workflow_count} CI workflows`} />
+          : <Metric icon={<Activity />} label="Module relations" value={String(report.modules.edges.length)} detail={`${report.modules.nodes.length} graph nodes`} />}
         <Metric icon={<Sparkles />} label="REA enrichment" value={report.rea.used ? 'Active' : 'Fallback'} detail={report.rea.used ? `${report.rea.analyzed_files} sources` : report.rea.status} />
       </div>
 
       <div className="mb-6 grid gap-4 xl:grid-cols-[1fr_1.5fr]">
         <SeverityOverview counts={report.severity_counts} />
-        <div className="rounded-2xl border border-line bg-panel p-5"><p className="font-mono text-[10px] uppercase tracking-[.2em] text-slate-500">Analysis context</p><p className="mt-3 text-sm leading-6 text-slate-300">{report.extension.description ?? 'No extension description was declared.'}</p><div className="mt-4 flex flex-wrap gap-2">{report.extension.activation_events.map((event) => <span key={event} className="rounded-md border border-line bg-ink px-2 py-1 font-mono text-[10px] text-slate-400">{event}</span>)}</div><p className="mt-4 border-t border-line pt-4 text-xs leading-5 text-slate-500">{report.rea.message}</p></div>
+        <div className="rounded-2xl border border-line bg-panel p-5"><p className="font-mono text-[10px] uppercase tracking-[.2em] text-slate-500">Analysis context</p><p className="mt-3 text-sm leading-6 text-slate-300">{description ?? (isRepository ? 'No repository description was declared.' : 'No extension description was declared.')}</p><div className="mt-4 flex flex-wrap gap-2">{contextTags.slice(0, 20).map((tag) => <span key={tag} className="rounded-md border border-line bg-ink px-2 py-1 font-mono text-[10px] text-slate-400">{tag}</span>)}</div>{isRepository ? <p className="mt-4 text-xs leading-5 text-slate-500">{report.repository.manifests.length} manifests · {report.repository.security_config_files.length} automation and workspace configuration files</p> : null}<p className="mt-4 border-t border-line pt-4 text-xs leading-5 text-slate-500">{report.rea.message}</p></div>
       </div>
 
       <nav className="mb-4 flex gap-1 overflow-auto rounded-xl border border-line bg-panel p-1" aria-label="Report sections">
@@ -119,4 +150,3 @@ function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisRep
 function Metric({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
   return <div className="rounded-2xl border border-line bg-panel p-5"><div className="mb-4 flex items-center justify-between text-slate-600"><span className="[&>svg]:h-4 [&>svg]:w-4">{icon}</span><span className="font-mono text-[9px] uppercase tracking-wider">{label}</span></div><div className="text-2xl font-semibold text-white">{value}</div><p className="mt-1 text-xs text-slate-500">{detail}</p></div>
 }
-

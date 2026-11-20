@@ -1,17 +1,22 @@
 # Extension X-Ray
 
-Extension X-Ray is a local-first static security analyzer for Visual Studio Code and Cursor extension packages. Upload a `.vsix` and it produces an evidence-backed report of security-relevant capabilities without executing extension code, installing its dependencies, or sending source to a remote service.
+Extension X-Ray v0.2.0 is a local-first static security analyzer for two artifact types:
 
-The report deliberately avoids a generic “trust score.” An API import can be legitimate; findings explain the observed pattern, confidence, context, impact, and what a reviewer should investigate.
+- Visual Studio Code and Cursor `.vsix` packages;
+- source repository `.zip` archives, including install hooks, GitHub Actions, editor/dev-container automation, and crypto-wallet risk patterns.
 
-## What the MVP includes
+It produces evidence-backed reports without executing uploaded code, installing dependencies, running hooks, checking out submodules, or sending source to a remote service. Findings describe observed behavior and confidence; there is deliberately no generic “trust score.”
 
-- Bounded, manual ZIP extraction with traversal, link, duplicate-path, entry-count, file-size, decompression, and compression-ratio defenses.
-- SHA-256 identity, VSIX metadata, declared commands and dependencies, and a complete bounded file inventory.
-- Native static rules for process creation, dynamic execution, sensitive paths, environment access, network APIs, transmission combinations, obfuscation, and download/execute combinations.
-- Optional REA 6.7 static JavaScript enrichment with availability detection, strict timeouts, bounded source selection, structured parsing, and native fallback.
-- Responsive React/Tailwind dashboard with severity context, findings and evidence, file inventory, dependency graph, and JSON download.
-- Synthetic benign and suspicious fixtures; pytest and Vitest coverage for security boundaries, API behavior, fallback, components, and schema round-tripping.
+## What v0.2.0 includes
+
+- Bounded ZIP extraction with traversal, link, duplicate-path, entry-count, file-size, decompression, and compression-ratio defenses.
+- SHA-256 identity, bounded metadata, complete admitted-file inventory, and literal JavaScript/TypeScript module relationships.
+- Existing VSIX capability rules for process creation, dynamic execution, sensitive paths, environment access, network APIs, obfuscation, and dangerous combinations.
+- Repo X-Ray rules for npm lifecycle scripts, download-to-interpreter commands, privileged or injectable GitHub Actions, mutable action references, VS Code tasks, and dev-container lifecycle commands.
+- Crypto Guard signals for wallet paths, possible private material with redacted evidence, wallet/network colocation, and clipboard address replacement patterns.
+- Optional REA 6.7 static JavaScript enrichment with strict timeouts, bounded source selection, structured parsing, and independent native fallback.
+- Responsive React/Tailwind dashboard with VSIX/repository modes, severity context, evidence, inventory, dependency graph, and JSON download.
+- Synthetic benign and suspicious fixtures plus backend and frontend regression tests.
 
 ## Requirements
 
@@ -19,7 +24,7 @@ The report deliberately avoids a generic “trust score.” An API import can be
 - Node.js 20 or newer and npm
 - Optional: REA CLI 6.7 (`rea`) for JavaScript enrichment
 
-No native disassembler is required. Extension X-Ray never installs VSIX dependencies.
+No package manager is invoked for uploaded artifacts. No native disassembler is required for JavaScript/TypeScript source analysis.
 
 ## Install
 
@@ -33,7 +38,7 @@ npm install
 Set-Location ..
 ```
 
-On macOS/Linux, replace the Python commands with `python3.13 -m venv .venv` and `.venv/bin/python`.
+On macOS/Linux, use an available Python 3.13+ interpreter and `.venv/bin/python`.
 
 ## Run
 
@@ -50,17 +55,19 @@ Set-Location frontend
 npm run dev
 ```
 
-Open `http://localhost:5173`. The Vite development server proxies `/api` to `http://127.0.0.1:8000`.
+Open `http://localhost:5173`. Select **Extension VSIX** or **Repository ZIP** before uploading. Vite proxies `/api` to `http://127.0.0.1:8000`.
 
 ## Reproduce the demo
 
 ```powershell
 .\.venv\Scripts\python .\samples\generate_fixtures.py
-.\.venv\Scripts\python -m app.cli .\samples\suspicious-extension.vsix --output .\reports\suspicious-report.json
-.\.venv\Scripts\python -m app.cli .\samples\benign-extension.vsix --no-rea --output .\reports\benign-fallback-report.json
+.\.venv\Scripts\python -m app.cli .\samples\suspicious-extension.vsix --output .\reports\suspicious-extension.json
+.\.venv\Scripts\python -m app.cli .\samples\benign-extension.vsix --no-rea --output .\reports\benign-extension.json
+.\.venv\Scripts\python -m app.cli .\samples\suspicious-repository.zip --kind repository --output .\reports\suspicious-repository.json
+.\.venv\Scripts\python -m app.cli .\samples\benign-repository.zip --kind repository --no-rea --output .\reports\benign-repository.json
 ```
 
-The first report uses REA when the verified CLI is available. The second explicitly demonstrates the independent fallback. You can also upload either fixture in the dashboard. See [docs/demo.md](docs/demo.md) for the expected observations.
+REA is used when its verified CLI is available unless `--no-rea` is supplied. See [docs/demo.md](docs/demo.md) for expected observations and manual checks.
 
 ## Validation commands
 
@@ -74,8 +81,6 @@ npm run build
 ```
 
 ## Configuration
-
-All limits have secure defaults:
 
 | Variable | Default | Purpose |
 | --- | ---: | --- |
@@ -92,12 +97,15 @@ All limits have secure defaults:
 
 ## API
 
-- `POST /api/v1/analyze` — multipart field `file`, returning schema `1.0.0`
-- `GET /api/v1/health` — service and REA availability
-- `GET /api/v1/report-schema` — generated JSON Schema
-- Interactive local documentation: `http://127.0.0.1:8000/docs`
+- `POST /api/v1/analyze` — multipart `file` containing a `.vsix`
+- `POST /api/v1/analyze-repository` — multipart `file` containing a repository `.zip`
+- `GET /api/v1/health` — service version and REA availability
+- `GET /api/v1/report-schema` — VSIX report JSON Schema
+- `GET /api/v1/repository-report-schema` — repository report JSON Schema
+- `GET /docs` — interactive local OpenAPI documentation
+
+Both report contracts use schema version `1.0.0` and include `analysis_kind` as a discriminator. The application version is `0.2.0`.
 
 ## Security model and limitations
 
-Static findings identify review-worthy capabilities, not intent or runtime reachability. Source files over the native scan limit are reported as limitations. REA analysis is also static; its Evidence identifier is retained only when present in genuine output. See [SECURITY.md](SECURITY.md), [architecture](docs/architecture.md), and the [rule catalog](docs/security-rules.md).
-
+The repository scanner is an offline first-pass reviewer, not a sandbox or malware verdict. It does not currently resolve dependency vulnerabilities or online reputation. Static evidence cannot prove reachability, intent, or an end-to-end data flow, and a clean result is not a guarantee. See [SECURITY.md](SECURITY.md), [architecture](docs/architecture.md), and the [rule catalog](docs/security-rules.md).

@@ -1,4 +1,4 @@
-import type { AnalysisReport } from '../types'
+import type { AnalysisReport, ScanKind } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -11,12 +11,13 @@ export class ApiError extends Error {
   }
 }
 
-export async function analyzeExtension(file: File): Promise<AnalysisReport> {
+export async function analyzeArtifact(file: File, kind: ScanKind): Promise<AnalysisReport> {
   const body = new FormData()
   body.append('file', file)
   let response: Response
   try {
-    response = await fetch(`${API_BASE}/api/v1/analyze`, { method: 'POST', body })
+    const endpoint = kind === 'repository' ? '/api/v1/analyze-repository' : '/api/v1/analyze'
+    response = await fetch(`${API_BASE}${endpoint}`, { method: 'POST', body })
   } catch {
     throw new ApiError('Could not reach the local analyzer. Is the backend running?', 'network_error')
   }

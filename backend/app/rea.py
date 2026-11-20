@@ -153,7 +153,7 @@ class ReaAdapter:
                 capture_output=True,
                 check=False,
                 text=True,
-                timeout=min(max(self.settings.timeout_seconds, 5.0), 15.0),
+                timeout=min(max(self.settings.timeout_seconds, 5.0), 30.0),
                 shell=False,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
@@ -265,7 +265,7 @@ class ReaAdapter:
 
         evidence_id = _first_string(document, {"evidence_id", "parent_evidence_id"})
         graph = _extract_graph(document)
-        message = "REA completed bounded static analysis without executing extension code."
+        message = "REA completed bounded static analysis without executing uploaded artifact code."
         if len(candidates) > len(selected):
             message += f" Source selection was capped at {len(selected)} files."
         return ReaAnalysis(

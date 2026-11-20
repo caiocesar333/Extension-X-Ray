@@ -8,6 +8,7 @@ from app.analyzer import ExtensionAnalyzer
 from app.config import ReaSettings
 from app.main import app
 from app.rea import ReaAdapter
+from app.repository_analyzer import RepositoryAnalyzer
 
 
 def client_without_rea(monkeypatch) -> TestClient:
@@ -17,6 +18,11 @@ def client_without_rea(monkeypatch) -> TestClient:
         main,
         "analyzer",
         ExtensionAnalyzer(rea=ReaAdapter(ReaSettings(mode="disabled"))),
+    )
+    monkeypatch.setattr(
+        main,
+        "repository_analyzer",
+        RepositoryAnalyzer(rea=ReaAdapter(ReaSettings(mode="disabled"))),
     )
     return TestClient(app)
 
@@ -67,4 +73,32 @@ def test_health_and_report_schema() -> None:
     schema = client.get("/api/v1/report-schema")
     assert schema.status_code == 200
     assert "extension" in schema.json()["properties"]
+    repository_schema = client.get("/api/v1/repository-report-schema")
+    assert repository_schema.status_code == 200
+    assert "repository" in repository_schema.json()["properties"]
+
+
+def test_analyze_repository_endpoint_returns_report(suspicious_repository: Path, monkeypatch) -> None:
+    client = client_without_rea(monkeypatch)
+    with suspicious_repository.open("rb") as fixture:
+        response = client.post(
+            "/api/v1/analyze-repository",
+            files={"file": ("repository.zip", fixture, "application/zip")},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["analysis_kind"] == "repository"
+    assert response.json()["repository"]["name"] == "synthetic-crypto-stealer-patterns"
+    assert any(item["rule_id"] == "CRYPTO-TX-001" for item in response.json()["findings"])
+
+
+def test_repository_endpoint_rejects_non_zip(monkeypatch) -> None:
+    client = client_without_rea(monkeypatch)
+    response = client.post(
+        "/api/v1/analyze-repository",
+        files={"file": ("repository.tar", b"data", "application/octet-stream")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_file_type"
 

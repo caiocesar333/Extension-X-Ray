@@ -12,6 +12,7 @@ frontend/coverage/
 *.tsbuildinfo
 reports/*.json
 samples/*.vsix
+samples/*.zip
 !.gitkeep
 .DS_Store
 Thumbs.db

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 import App from './App'
-import { reportFixture } from './test/fixtures'
+import { reportFixture, repositoryReportFixture } from './test/fixtures'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -23,5 +23,20 @@ test('surfaces structured API failures', async () => {
   fireEvent.change(screen.getByLabelText('Choose VSIX file'), { target: { files: [new File(['x'], 'fixture.vsix')] } })
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Unsafe archive path')
+})
+
+test('analyzes a repository ZIP through the repository endpoint', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => repositoryReportFixture })
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Repository ZIP' }))
+  fireEvent.change(screen.getByLabelText('Choose repository ZIP file'), {
+    target: { files: [new File(['x'], 'repository.zip', { type: 'application/zip' })] },
+  })
+
+  expect(await screen.findByText('repository-fixture')).toBeInTheDocument()
+  expect(screen.getByText('Declared dependencies')).toBeInTheDocument()
+  expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/analyze-repository')
 })
 
