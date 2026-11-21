@@ -36,7 +36,10 @@ test('analyzes a repository ZIP through the repository endpoint', async () => {
   })
 
   expect(await screen.findByText('repository-fixture')).toBeInTheDocument()
-  expect(screen.getByText('Declared dependencies')).toBeInTheDocument()
+  expect(screen.getByText('SBOM components')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Supply Chain (1)' }))
+  expect(screen.getByText('Software bill of materials')).toBeInTheDocument()
+  expect(screen.getByText('GHSA-r9p9-mrjm-926w')).toBeInTheDocument()
   expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/analyze-repository')
 })
 

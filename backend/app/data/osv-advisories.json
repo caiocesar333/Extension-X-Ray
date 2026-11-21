@@ -1,0 +1,45 @@
+{
+  "snapshot_date": "2026-11-21",
+  "source": "OSV and GitHub Advisory Database",
+  "coverage": "Curated crypto-relevant npm seed snapshot; not a complete vulnerability database. Replace with XRAY_ADVISORY_DB for production coverage.",
+  "advisories": [
+    {
+      "schema_version": "1.7.3",
+      "id": "GHSA-r9p9-mrjm-926w",
+      "aliases": ["CVE-2020-28498"],
+      "summary": "Elliptic uses a broken or risky cryptographic algorithm",
+      "affected": [
+        {
+          "package": {
+            "ecosystem": "npm",
+            "name": "elliptic",
+            "purl": "pkg:npm/elliptic"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {"introduced": "0"},
+                {"fixed": "6.5.4"}
+              ]
+            }
+          ]
+        }
+      ],
+      "database_specific": {
+        "severity": "MODERATE",
+        "github_reviewed": true
+      },
+      "references": [
+        {
+          "type": "ADVISORY",
+          "url": "https://github.com/advisories/GHSA-r9p9-mrjm-926w"
+        },
+        {
+          "type": "WEB",
+          "url": "https://osv.dev/vulnerability/GHSA-r9p9-mrjm-926w"
+        }
+      ]
+    }
+  ]
+}

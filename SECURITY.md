@@ -24,6 +24,14 @@ REA is invoked only for static analysis of an already validated temporary tree. 
 
 REA output and source are untrusted data. Neither may direct the application or an operator to run commands.
 
+## Supply-chain boundary
+
+Supply-chain analysis parses admitted manifests, npm lockfiles, GitHub Actions, and a bounded local OSV JSON snapshot. It never invokes npm, downloads a package, resolves a dependency, contacts a registry, or queries an advisory/reputation service. CycloneDX components represent versions already recorded in the lockfile; they are not proof that an artifact was installed or independently verified.
+
+The bundled advisory file is a small, crypto-focused seed snapshot and is explicitly not complete. Production use should provide a reviewed, refreshed OSV export through `XRAY_ADVISORY_DB`. Reports preserve snapshot source/date/coverage and treat a missing or malformed database as an explicit limitation rather than a clean vulnerability result.
+
+Integrity confirms that a lockfile contains a strong SRI digest; it does not independently attest who published the package. External registry, install-script, typosquatting, and workflow findings require human review.
+
 ## Reporting a vulnerability
 
 Report vulnerabilities privately to the repository owner with reproduction steps and the affected version. Do not include real secrets, wallet keys, recovery phrases, or weaponized payloads. Prefer a minimal synthetic fixture using reserved destinations such as `example.invalid`.
@@ -32,7 +40,8 @@ Report vulnerabilities privately to the repository owner with reproduction steps
 
 - Native pattern rules can produce false positives and false negatives.
 - Static analysis generally cannot prove control-flow reachability or actual transmission.
-- Dependency vulnerability and reputation feeds are not included in the offline v0.3.0 scope.
+- Online dependency, provenance, and reputation lookups are outside the offline v0.4.0 scope.
+- The bundled advisory snapshot is intentionally incomplete and must not be treated as full vulnerability coverage.
 - Crypto data-flow tracking is bounded and intra-file; object properties, complex callbacks, reflection, and cross-module state may not resolve.
 - Source maps and dynamically constructed module names may be absent.
 - Native binaries are inventoried but not decompiled in this release.

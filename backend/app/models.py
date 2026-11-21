@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 
 class Severity(StrEnum):
@@ -128,6 +128,89 @@ class ReaStatus(BaseModel):
     analyzed_files: int = 0
 
 
+class CycloneDxHash(BaseModel):
+    alg: Literal["SHA-256", "SHA-384", "SHA-512"]
+    content: str
+
+
+class CycloneDxProperty(BaseModel):
+    name: str
+    value: str
+
+
+class CycloneDxComponent(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    type: Literal["library"] = "library"
+    bom_ref: str = Field(alias="bom-ref")
+    group: str | None = None
+    name: str
+    version: str
+    purl: str
+    scope: Literal["required", "optional", "excluded"] = "required"
+    hashes: list[CycloneDxHash] = Field(default_factory=list)
+    properties: list[CycloneDxProperty] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_group(self, handler: Any) -> dict[str, Any]:
+        data = handler(self)
+        if self.group is None:
+            data.pop("group", None)
+        return data
+
+
+class CycloneDxBom(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    schema_uri: str = Field(
+        default="http://cyclonedx.org/schema/bom-1.6.schema.json",
+        alias="$schema",
+    )
+    bom_format: Literal["CycloneDX"] = Field(default="CycloneDX", alias="bomFormat")
+    spec_version: Literal["1.6"] = Field(default="1.6", alias="specVersion")
+    serial_number: str = Field(alias="serialNumber")
+    version: int = 1
+    components: list[CycloneDxComponent] = Field(default_factory=list)
+
+
+class LockfileIntegritySummary(BaseModel):
+    path: str | None = None
+    lockfile_version: int | None = None
+    package_count: int = 0
+    integrity_count: int = 0
+    missing_integrity_count: int = 0
+    external_source_count: int = 0
+    install_script_count: int = 0
+
+
+class AdvisoryDatabaseStatus(BaseModel):
+    available: bool
+    source: str | None = None
+    snapshot_date: str | None = None
+    coverage: str | None = None
+    record_count: int = 0
+    message: str
+
+
+class AdvisoryMatch(BaseModel):
+    advisory_id: str
+    aliases: list[str] = Field(default_factory=list)
+    package: str
+    version: str
+    severity: Severity
+    summary: str
+    fixed_version: str | None = None
+    reference: str | None = None
+
+
+class SupplyChainSummary(BaseModel):
+    component_count: int = 0
+    direct_dependency_count: int = 0
+    lockfile: LockfileIntegritySummary = Field(default_factory=LockfileIntegritySummary)
+    advisory_database: AdvisoryDatabaseStatus
+    advisory_matches: list[AdvisoryMatch] = Field(default_factory=list)
+
+
 class AnalysisReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -150,7 +233,7 @@ class AnalysisReport(BaseModel):
 class RepositoryAnalysisReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.0.0"
+    schema_version: str = "1.1.0"
     analysis_kind: Literal["repository"] = "repository"
     report_id: str
     generated_at: datetime
@@ -162,6 +245,8 @@ class RepositoryAnalysisReport(BaseModel):
     findings: list[Finding]
     files: list[FileEntry]
     modules: ModuleGraph
+    sbom: CycloneDxBom
+    supply_chain: SupplyChainSummary
     rea: ReaStatus
     limitations: list[str] = Field(default_factory=list)
 

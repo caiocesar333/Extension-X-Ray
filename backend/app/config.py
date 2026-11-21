@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -59,5 +60,26 @@ class ReaSettings:
             command=os.getenv("XRAY_REA_COMMAND", "rea"),
             timeout_seconds=float(os.getenv("XRAY_REA_TIMEOUT_SECONDS", "15")),
             max_source_files=_positive_int("XRAY_REA_MAX_SOURCE_FILES", 150),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SupplyChainSettings:
+    advisory_database: Path | None = None
+    max_advisory_bytes: int = 10 * 1024 * 1024
+    max_advisories: int = 50_000
+    max_components: int = 2_000
+
+    @classmethod
+    def from_env(cls) -> "SupplyChainSettings":
+        configured = os.getenv("XRAY_ADVISORY_DB")
+        return cls(
+            advisory_database=Path(configured).expanduser() if configured else None,
+            max_advisory_bytes=_positive_int(
+                "XRAY_MAX_ADVISORY_BYTES",
+                10 * 1024 * 1024,
+            ),
+            max_advisories=_positive_int("XRAY_MAX_ADVISORIES", 50_000),
+            max_components=_positive_int("XRAY_MAX_SBOM_COMPONENTS", 2_000),
         )
 

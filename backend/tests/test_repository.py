@@ -60,12 +60,20 @@ def test_repository_detects_supply_chain_and_crypto_patterns(suspicious_reposito
         "EXR-PROC-001",
         "EXR-ENV-001",
         "EXR-NET-001",
+        "SCM-ADV-001",
+        "SCM-LOCK-003",
+        "SCM-PROV-001",
+        "SCM-NPM-001",
+        "SCM-NPM-002",
+        "SCM-TYPO-001",
     }
     assert expected_rules.issubset(rule_ids), expected_rules - rule_ids
     assert all("synthetic alpha beta" not in (finding.evidence.snippet or "") for finding in report.findings)
     assert "a" * 64 not in report.model_dump_json()
     assert report.repository.scripts["postinstall"].startswith("curl")
     assert report.repository.security_config_files
+    assert report.supply_chain.component_count == 3
+    assert report.supply_chain.advisory_matches[0].fixed_version == "6.5.4"
 
 
 def test_repository_report_round_trips_schema(suspicious_repository: Path) -> None:

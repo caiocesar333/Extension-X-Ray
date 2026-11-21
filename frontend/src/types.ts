@@ -31,6 +31,59 @@ export interface ModuleGraph {
   source: string
 }
 
+export interface CycloneDxComponent {
+  type: 'library'
+  'bom-ref': string
+  group?: string
+  name: string
+  version: string
+  purl: string
+  scope: 'required' | 'optional' | 'excluded'
+  hashes: Array<{ alg: 'SHA-256' | 'SHA-384' | 'SHA-512'; content: string }>
+  properties: Array<{ name: string; value: string }>
+}
+
+export interface CycloneDxBom {
+  $schema: string
+  bomFormat: 'CycloneDX'
+  specVersion: '1.6'
+  serialNumber: string
+  version: number
+  components: CycloneDxComponent[]
+}
+
+export interface SupplyChainSummary {
+  component_count: number
+  direct_dependency_count: number
+  lockfile: {
+    path: string | null
+    lockfile_version: number | null
+    package_count: number
+    integrity_count: number
+    missing_integrity_count: number
+    external_source_count: number
+    install_script_count: number
+  }
+  advisory_database: {
+    available: boolean
+    source: string | null
+    snapshot_date: string | null
+    coverage: string | null
+    record_count: number
+    message: string
+  }
+  advisory_matches: Array<{
+    advisory_id: string
+    aliases: string[]
+    package: string
+    version: string
+    severity: Severity
+    summary: string
+    fixed_version: string | null
+    reference: string | null
+  }>
+}
+
 interface BaseAnalysisReport {
   schema_version: string
   report_id: string
@@ -81,6 +134,8 @@ export interface RepositoryAnalysisReport extends BaseAnalysisReport {
     workflow_count: number
     security_config_files: string[]
   }
+  sbom: CycloneDxBom
+  supply_chain: SupplyChainSummary
 }
 
 export type AnalysisReport = ExtensionAnalysisReport | RepositoryAnalysisReport

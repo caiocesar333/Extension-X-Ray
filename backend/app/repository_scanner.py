@@ -245,12 +245,14 @@ def _scan_workflow(path: str, text: str, findings: list[Finding]) -> None:
             tags=("github-actions", "injection"),
             summary="A run step directly references attacker-influenced github.event data.",
         ))
+    mutable_actions: list[re.Match[str]] = []
     for action in re.finditer(r"^\s*-?\s*uses\s*:\s*([^\s#]+)", text, re.MULTILINE):
         reference = action.group(1).strip("'\"")
         if reference.startswith(("./", "docker://")) or "@" not in reference:
             continue
         revision = reference.rsplit("@", 1)[1]
         if not re.fullmatch(r"[a-fA-F0-9]{40}", revision):
+            mutable_actions.append(action)
             _append(findings, _finding(
                 rule_id="REP-CI-003",
                 title="GitHub Action is not pinned to an immutable commit",
@@ -265,6 +267,50 @@ def _scan_workflow(path: str, text: str, findings: list[Finding]) -> None:
                 tags=("github-actions", "supply-chain"),
                 summary=f"Mutable action reference: {reference[:200]}",
             ))
+    write_all = re.search(r"^\s*permissions\s*:\s*write-all\b", text, re.MULTILINE | re.IGNORECASE)
+    if write_all:
+        _append(findings, _finding(
+            rule_id="SCM-CI-001",
+            title="GitHub Actions grants write-all permissions",
+            severity=Severity.high,
+            confidence=Confidence.high,
+            description="The workflow grants every available GITHUB_TOKEN permission write access.",
+            impact="Compromised workflow code or dependencies may modify repository contents, releases, packages, or actions.",
+            guidance="Set read-all by default and grant only the minimum write permission to the specific job that needs it.",
+            path=path, text=text, offset=write_all.start(), tags=("supply-chain", "github-actions", "permissions"),
+            summary="The workflow declares permissions: write-all.",
+        ))
+    oidc_write = re.search(r"^\s*id-token\s*:\s*write\b", text, re.MULTILINE | re.IGNORECASE)
+    if oidc_write and mutable_actions:
+        action = mutable_actions[0]
+        _append(findings, _finding(
+            rule_id="SCM-CI-002",
+            title="OIDC credential permission is combined with a mutable Action",
+            severity=Severity.high,
+            confidence=Confidence.high,
+            description="The workflow can request an OIDC token while executing an Action that is not pinned to a full commit SHA.",
+            impact="A compromised or retargeted Action may obtain federated cloud credentials under the workflow trust policy.",
+            guidance="Pin every Action in the credential-bearing job to a verified commit and restrict the cloud trust policy and job permissions.",
+            path=path, text=text, offset=action.start(), tags=("supply-chain", "github-actions", "oidc"),
+            summary="id-token: write is present with a mutable Action reference.",
+        ))
+    secret_expression = re.compile(r"\$\{\{\s*secrets\.[^}]+\}\}")
+    secret_run = next(
+        ((offset, section) for offset, section in _run_sections(text) if secret_expression.search(section)),
+        None,
+    )
+    if secret_run:
+        _append(findings, _finding(
+            rule_id="SCM-CI-003",
+            title="Secret is interpolated directly into a workflow script",
+            severity=Severity.high,
+            confidence=Confidence.medium,
+            description="A secrets context expression is expanded directly inside a run script instead of crossing an explicit environment boundary.",
+            impact="Shell quoting, command expansion, or accidental logging may expose or misuse the secret.",
+            guidance="Pass the secret through a narrowly scoped environment variable, quote it for the selected shell, and avoid printing command traces.",
+            path=path, text=text, offset=secret_run[0], tags=("supply-chain", "github-actions", "secrets"),
+            summary="A run step directly interpolates a secrets.* expression.",
+        ))
 
 
 def _scan_repository_config(path: str, text: str, findings: list[Finding]) -> None:

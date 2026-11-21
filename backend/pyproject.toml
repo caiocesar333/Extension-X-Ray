@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "extension-xray"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local-first static security analysis for VSIX packages and source repositories"
 requires-python = ">=3.13"
 dependencies = [
@@ -26,6 +26,9 @@ extension-xray = "app.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"app/data/osv-advisories.json" = "app/data/osv-advisories.json"
 
 [tool.pytest.ini_options]
 addopts = "-q"

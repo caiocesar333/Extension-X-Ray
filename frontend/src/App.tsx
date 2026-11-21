@@ -4,11 +4,12 @@ import { FileInventory } from './components/FileInventory'
 import { FindingsPanel } from './components/FindingsPanel'
 import { ModuleGraph } from './components/ModuleGraph'
 import { SeverityOverview } from './components/SeverityOverview'
+import { SupplyChainPanel } from './components/SupplyChainPanel'
 import { UploadZone } from './components/UploadZone'
 import { analyzeArtifact } from './services/api'
 import type { AnalysisReport, ScanKind } from './types'
 
-type Tab = 'findings' | 'files' | 'modules'
+type Tab = 'findings' | 'supply-chain' | 'files' | 'modules'
 
 export default function App() {
   const [report, setReport] = useState<AnalysisReport | null>(null)
@@ -98,6 +99,12 @@ function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisRep
   const contextTags = isRepository
     ? [...report.repository.ecosystems, ...(report.repository.package_manager ? [report.repository.package_manager] : []), ...Object.keys(report.repository.scripts).map((script) => `script:${script}`)]
     : report.extension.activation_events
+  const tabs: Array<[Tab, string]> = [
+    ['findings', `Findings (${findingTotal})`],
+    ...(isRepository ? [['supply-chain', `Supply Chain (${report.sbom.components.length})`] as [Tab, string]] : []),
+    ['files', `Files (${report.files.length})`],
+    ['modules', `Dependencies (${report.modules.nodes.length})`],
+  ]
   const download = () => {
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -125,7 +132,7 @@ function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisRep
         <Metric icon={<ShieldAlert />} label="Security signals" value={String(findingTotal)} detail={findingTotal ? `${report.severity_counts.critical + report.severity_counts.high} elevated` : 'No rule matches'} />
         <Metric icon={<Archive />} label="Files inspected" value={String(report.archive.file_count)} detail={`${(report.archive.uncompressed_bytes / 1024).toFixed(1)} KiB expanded`} />
         {isRepository
-          ? <Metric icon={<Activity />} label="Declared dependencies" value={String(report.repository.dependency_count)} detail={`${report.repository.workflow_count} CI workflows`} />
+          ? <Metric icon={<Activity />} label="SBOM components" value={String(report.supply_chain.component_count)} detail={`${report.supply_chain.advisory_matches.length} advisory matches`} />
           : <Metric icon={<Activity />} label="Module relations" value={String(report.modules.edges.length)} detail={`${report.modules.nodes.length} graph nodes`} />}
         <Metric icon={<Sparkles />} label="REA enrichment" value={report.rea.used ? 'Active' : 'Fallback'} detail={report.rea.used ? `${report.rea.analyzed_files} sources` : report.rea.status} />
       </div>
@@ -136,9 +143,10 @@ function ReportDashboard({ report, tab, setTab, onReset }: { report: AnalysisRep
       </div>
 
       <nav className="mb-4 flex gap-1 overflow-auto rounded-xl border border-line bg-panel p-1" aria-label="Report sections">
-        {([['findings', `Findings (${findingTotal})`], ['files', `Files (${report.files.length})`], ['modules', `Dependencies (${report.modules.nodes.length})`]] as Array<[Tab, string]>).map(([value, label]) => <button key={value} type="button" onClick={() => setTab(value)} className={`whitespace-nowrap rounded-lg px-4 py-2.5 text-xs font-medium transition ${tab === value ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{label}</button>)}
+        {tabs.map(([value, label]) => <button key={value} type="button" onClick={() => setTab(value)} className={`whitespace-nowrap rounded-lg px-4 py-2.5 text-xs font-medium transition ${tab === value ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{label}</button>)}
       </nav>
       {tab === 'findings' ? <FindingsPanel findings={report.findings} /> : null}
+      {tab === 'supply-chain' && isRepository ? <SupplyChainPanel repositoryName={report.repository.name} sbom={report.sbom} summary={report.supply_chain} /> : null}
       {tab === 'files' ? <FileInventory files={report.files} /> : null}
       {tab === 'modules' ? <ModuleGraph graph={report.modules} /> : null}
 

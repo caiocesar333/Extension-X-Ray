@@ -87,9 +87,13 @@ def test_analyze_repository_endpoint_returns_report(suspicious_repository: Path,
         )
 
     assert response.status_code == 200
-    assert response.json()["analysis_kind"] == "repository"
-    assert response.json()["repository"]["name"] == "synthetic-crypto-stealer-patterns"
-    assert any(item["rule_id"] == "CRYPTO-TX-001" for item in response.json()["findings"])
+    body = response.json()
+    assert body["analysis_kind"] == "repository"
+    assert body["schema_version"] == "1.1.0"
+    assert body["repository"]["name"] == "synthetic-crypto-stealer-patterns"
+    assert body["sbom"]["bomFormat"] == "CycloneDX"
+    assert body["supply_chain"]["component_count"] == 3
+    assert any(item["rule_id"] == "CRYPTO-TX-001" for item in body["findings"])
 
 
 def test_repository_endpoint_rejects_non_zip(monkeypatch) -> None:

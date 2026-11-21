@@ -26,8 +26,9 @@ Expected suspicious repository observations:
 - mutable Action, VS Code task, and dev-container findings;
 - wallet-path, wallet/network, clipboard, and redacted possible-secret findings;
 - Crypto Guard 2 evidence for an encoded key, wallet environment access, alias-based network flow, and process-argument flow;
+- a CycloneDX 1.6 BOM with three npm components, lockfile integrity/provenance metrics, a conservative typo signal, and an offline OSV match for the synthetic `elliptic@6.5.3` dependency;
 - explicit REA completion when available, otherwise a fallback limitation;
-- a valid schema `1.0.0` report that round-trips through `RepositoryAnalysisReport`.
+- a valid repository schema `1.1.0` report that round-trips through `RepositoryAnalysisReport`.
 
 Expected benign repository observations:
 

