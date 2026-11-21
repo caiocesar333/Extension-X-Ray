@@ -2,6 +2,51 @@
 
 Updated: 2026-11-21
 
+## v1.0.0 stabilization plan
+
+- [x] Declare the stable CLI, HTTP, report, policy, SARIF, rule-ID, fingerprint, exit-code, and no-execution surfaces.
+- [x] Synchronize backend, package, frontend, lockfile, OpenAPI, health, and SARIF version metadata.
+- [x] Constrain report models to the explicitly supported VSIX `1.0.0` and repository `1.1.0` schemas.
+- [x] Preserve v0.5 report compatibility and fail closed for unknown report schema versions.
+- [x] Add `extension-xray --version` and automated release-contract regression tests.
+- [x] Add a least-privilege CI workflow with immutable Action pins and backend/frontend release gates.
+- [x] Harden Python package metadata and verify the built wheel contents.
+- [x] Remove known frontend test-toolchain advisories without changing application behavior.
+- [x] Add changelog, compatibility policy, and repeatable release checklist.
+- [x] Run the complete backend, frontend, package, fixture, REA, HTTP, CI-policy, baseline, SARIF, schema, and redaction matrix.
+
+## v1.0.0 delivered behavior
+
+- Application, backend package, frontend package, OpenAPI, health, CLI, and SARIF tool metadata now report `1.0.0`.
+- `extension-xray --version` provides a scriptable version probe. The release test prevents backend, frontend, and lockfile versions from drifting.
+- VSIX report schema `1.0.0` and repository report schema `1.1.0` remain unchanged from v0.5 and are now represented as literal backend and frontend contracts. Unknown versions are rejected during report loading.
+- `docs/compatibility.md` defines the v1 public surface, independent document versioning, patch/minor/major evolution rules, rule-ID expectations, and the detection-results boundary.
+- `CHANGELOG.md` records the delivered milestones, while `docs/release.md` defines preparation, verification, packaging, commit, and immutable-tag requirements.
+- `.github/workflows/ci.yml` runs backend and frontend gates with read-only repository permissions, disabled checkout credential persistence, and full-SHA pins for every external Action.
+- Python project metadata now includes stable-release classifiers, discovery keywords, and repository/documentation/issue links. The wheel retains the CLI entry point and bundled offline advisory snapshot.
+- Vitest moved from 2.1.9 to 4.1.12. The new lock graph removes the vulnerable nested Vite/esbuild, mocker, and tinypool versions while retaining Node 20 compatibility.
+
+## v1.0.0 validation log
+
+- Backend: `67 passed`; the only warning is the upstream FastAPI/Starlette `TestClient` migration notice from `httpx` to `httpx2`.
+- Editable package installation, `extension-xray --version`, package metadata version, and `pip check`: passed at `1.0.0`.
+- Wheel build: passed; `extension_xray-1.0.0-py3-none-any.whl` contains 22 files, including the CLI metadata and bundled offline advisory database.
+- Clean frontend `npm ci`: passed with Vitest `4.1.12`; `npm audit` reported zero vulnerabilities.
+- Frontend TypeScript typecheck and ESLint: passed.
+- Frontend Vitest: `7 passed` across 3 files.
+- Frontend production build: passed; 1,584 modules transformed, with 180.99 kB JavaScript and 19.16 kB CSS before gzip.
+- Suspicious VSIX: 8 findings; REA 6.7.0 completed on 2 sources with Evidence ID `ev_2318a9e313962df53e3a2e6026c05e1e1409d5c30aa610680775acc722c51d0e`.
+- Suspicious repository: 27 findings and 3 SBOM components; REA 6.7.0 completed on 7 sources with Evidence ID `ev_a6db0566fe3fcfb26036338d5cae9bb25605a034b2696af36a6af011fed63d6e`.
+- Benign VSIX and repository native-fallback analyses: zero findings.
+- All four generated reports round-tripped through the strict Pydantic models; unknown schema versions failed closed in regression coverage.
+- Synthetic recovery-phrase and encoded-key values were absent from the suspicious serialized reports.
+- CI policy smoke: exit `1` after writing report, SARIF, and policy output; 17 violations from 27 considered findings.
+- Baseline smoke: exit `0`, 0 new, 27 unchanged, 0 resolved, and no policy violations.
+- Operational-error smoke: a missing report returned exit `2` with a bounded message.
+- SARIF smoke: version 2.1.0, tool version `1.0.0`, 27 results, and 26 rule descriptors.
+- HTTP smoke: health/schema endpoints and both upload routes returned `200`; health reported `1.0.0`, VSIX produced 8 findings, repository produced 27, and both suspicious uploads completed REA enrichment.
+- The main frontend dev server kept its esbuild executable open, so its local `node_modules` could not be replaced atomically. The release lock was instead verified through a clean isolated `npm ci`, test, audit, and build without interrupting the user's server.
+
 ## v0.5.0 CI Guard plan
 
 - [x] Emit SARIF 2.1.0 with rule metadata, archive-relative locations, and stable partial fingerprints.

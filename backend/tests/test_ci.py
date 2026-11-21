@@ -121,7 +121,7 @@ def test_sarif_contains_rules_locations_fingerprints_and_baseline_state(
     results = run["results"]
 
     assert document["version"] == "2.1.0"
-    assert run["tool"]["driver"]["semanticVersion"] == "0.5.0"
+    assert run["tool"]["driver"]["semanticVersion"] == "1.0.0"
     assert len(results) == len(report.findings)
     assert results[0]["baselineState"] == "unchanged"
     assert results[0]["partialFingerprints"]["primaryLocationLineHash"]
@@ -154,6 +154,22 @@ def test_reusable_workflow_pins_external_actions_and_uses_its_own_sha() -> None:
     assert all(re.fullmatch(r"[^@]+@[a-f0-9]{40}", reference) for reference in references)
     assert "repository: ${{ job.workflow_repository }}" in workflow
     assert "ref: ${{ job.workflow_sha }}" in workflow
+
+
+def test_all_workflows_pin_external_actions_to_full_commits() -> None:
+    workflows = (Path(__file__).resolve().parents[2] / ".github" / "workflows").glob("*.yml")
+    references = [
+        reference
+        for workflow in workflows
+        for reference in re.findall(
+            r"^\s*uses:\s*([^\s#]+)",
+            workflow.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+    ]
+
+    assert references
+    assert all(re.fullmatch(r"[^@]+@[a-f0-9]{40}", reference) for reference in references)
 
 
 def test_reusable_workflow_does_not_trigger_its_own_ci_rules(tmp_path: Path) -> None:

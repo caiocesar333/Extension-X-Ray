@@ -4,9 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "extension-xray"
-version = "0.5.0"
+version = "1.0.0"
 description = "Local-first static security analysis for VSIX packages and source repositories"
 requires-python = ">=3.13"
+keywords = ["security", "static-analysis", "supply-chain", "vscode", "sarif"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "Topic :: Security",
+]
 dependencies = [
   "fastapi>=0.115,<1",
   "pydantic>=2.10,<3",
@@ -23,6 +31,11 @@ dev = [
 
 [project.scripts]
 extension-xray = "app.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/caiocesar333/Extension-X-Ray#readme"
+Issues = "https://github.com/caiocesar333/Extension-X-Ray/issues"
+Repository = "https://github.com/caiocesar333/Extension-X-Ray"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

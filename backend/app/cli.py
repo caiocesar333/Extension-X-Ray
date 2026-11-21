@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from . import __version__
 from .analyzer import ExtensionAnalyzer
 from .ci import (
     PolicyConfig,
@@ -26,7 +27,13 @@ from .repository_analyzer import RepositoryAnalyzer
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
+        prog="extension-xray",
         description="Analyze an artifact or process an existing Extension X-Ray report",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument("input", type=Path, help="Path to a .vsix, repository .zip, or report .json")
     parser.add_argument("--output", "-o", type=Path, help="Write the JSON report to this path")

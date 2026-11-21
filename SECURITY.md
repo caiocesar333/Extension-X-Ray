@@ -46,7 +46,7 @@ Report vulnerabilities privately to the repository owner with reproduction steps
 
 - Native pattern rules can produce false positives and false negatives.
 - Static analysis generally cannot prove control-flow reachability or actual transmission.
-- Online dependency, provenance, and reputation lookups are outside the offline v0.5.0 scope.
+- Online dependency, provenance, and reputation lookups are outside the offline v1.0.0 scope.
 - The bundled advisory snapshot is intentionally incomplete and must not be treated as full vulnerability coverage.
 - Crypto data-flow tracking is bounded and intra-file; object properties, complex callbacks, reflection, and cross-module state may not resolve.
 - Source maps and dynamically constructed module names may be absent.

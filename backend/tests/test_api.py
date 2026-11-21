@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from app import __version__
 from app.analyzer import ExtensionAnalyzer
 from app.config import ReaSettings
 from app.main import app
@@ -69,13 +70,18 @@ def test_api_rejects_wrong_extension(monkeypatch) -> None:
 def test_health_and_report_schema() -> None:
     client = TestClient(app)
 
-    assert client.get("/api/v1/health").status_code == 200
+    health = client.get("/api/v1/health")
+    assert health.status_code == 200
+    assert health.json()["version"] == __version__
     schema = client.get("/api/v1/report-schema")
     assert schema.status_code == 200
     assert "extension" in schema.json()["properties"]
+    assert schema.json()["properties"]["schema_version"]["const"] == "1.0.0"
     repository_schema = client.get("/api/v1/repository-report-schema")
     assert repository_schema.status_code == 200
     assert "repository" in repository_schema.json()["properties"]
+    assert repository_schema.json()["properties"]["schema_version"]["const"] == "1.1.0"
+    assert client.get("/openapi.json").json()["info"]["version"] == __version__
 
 
 def test_analyze_repository_endpoint_returns_report(suspicious_repository: Path, monkeypatch) -> None:

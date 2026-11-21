@@ -85,7 +85,6 @@ export interface SupplyChainSummary {
 }
 
 interface BaseAnalysisReport {
-  schema_version: string
   report_id: string
   generated_at: string
   source_filename: string
@@ -100,6 +99,7 @@ interface BaseAnalysisReport {
 }
 
 export interface ExtensionAnalysisReport extends BaseAnalysisReport {
+  schema_version: '1.0.0'
   analysis_kind: 'extension'
   extension: {
     name: string
@@ -121,6 +121,7 @@ export interface ExtensionAnalysisReport extends BaseAnalysisReport {
 }
 
 export interface RepositoryAnalysisReport extends BaseAnalysisReport {
+  schema_version: '1.1.0'
   analysis_kind: 'repository'
   repository: {
     name: string

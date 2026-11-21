@@ -214,7 +214,7 @@ class SupplyChainSummary(BaseModel):
 class AnalysisReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.0.0"
+    schema_version: Literal["1.0.0"] = "1.0.0"
     analysis_kind: Literal["extension"] = "extension"
     report_id: str
     generated_at: datetime
@@ -233,7 +233,7 @@ class AnalysisReport(BaseModel):
 class RepositoryAnalysisReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = "1.1.0"
+    schema_version: Literal["1.1.0"] = "1.1.0"
     analysis_kind: Literal["repository"] = "repository"
     report_id: str
     generated_at: datetime

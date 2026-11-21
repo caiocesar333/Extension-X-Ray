@@ -1,13 +1,13 @@
 # Extension X-Ray
 
-Extension X-Ray v0.5.0 is a local-first static security analyzer for two artifact types:
+Extension X-Ray v1.0.0 is a local-first static security analyzer for two artifact types:
 
 - Visual Studio Code and Cursor `.vsix` packages;
 - source repository `.zip` archives, including install hooks, GitHub Actions, editor/dev-container automation, and crypto-wallet risk patterns.
 
 It produces evidence-backed reports without executing uploaded code, installing dependencies, running hooks, checking out submodules, or sending source to a remote service. Findings describe observed behavior and confidence; there is deliberately no generic “trust score.”
 
-## What v0.5.0 includes
+## What v1.0.0 includes
 
 - Bounded ZIP extraction with traversal, link, duplicate-path, entry-count, file-size, decompression, and compression-ratio defenses.
 - SHA-256 identity, bounded metadata, complete admitted-file inventory, and literal JavaScript/TypeScript module relationships.
@@ -64,6 +64,8 @@ npm run dev
 ```
 
 Open `http://localhost:5173`. Select **Extension VSIX** or **Repository ZIP** before uploading. Vite proxies `/api` to `http://127.0.0.1:8000`.
+
+Verify the installed CLI version with `extension-xray --version`.
 
 ## Reproduce the demo
 
@@ -127,7 +129,9 @@ npm run build
 - `GET /api/v1/repository-report-schema` — repository report JSON Schema
 - `GET /docs` — interactive local OpenAPI documentation
 
-The VSIX report remains schema `1.0.0`; the repository report is schema `1.1.0` with CycloneDX and supply-chain fields. Both include `analysis_kind` as a discriminator. CI diff and policy documents use schema `1.0.0`. The application version is `0.5.0`.
+The VSIX report remains schema `1.0.0`; the repository report is schema `1.1.0` with CycloneDX and supply-chain fields. Both include `analysis_kind` as a discriminator. CI diff and policy documents use schema `1.0.0`. Unknown report schema versions fail closed instead of being interpreted as a known format. The application version is `1.0.0`.
+
+The stable public surface and post-v1 versioning rules are documented in [compatibility](docs/compatibility.md). Release verification is documented in the [release checklist](docs/release.md), and user-visible changes are tracked in the [changelog](CHANGELOG.md).
 
 ## Security model and limitations
 

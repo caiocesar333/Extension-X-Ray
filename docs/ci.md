@@ -1,6 +1,6 @@
 # CI Guard
 
-Extension X-Ray v0.5.0 adds a stable automation contract without changing the VSIX or repository report schemas. Artifact analysis still happens before policy evaluation, and report, SARIF, diff, and policy outputs are written before a policy failure returns exit code `1`.
+Extension X-Ray v1.0.0 freezes the automation contract without changing the VSIX or repository report schemas introduced before v1. Artifact analysis still happens before policy evaluation, and report, SARIF, diff, and policy outputs are written before a policy failure returns exit code `1`.
 
 ## Exit codes
 
