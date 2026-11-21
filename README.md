@@ -1,13 +1,13 @@
 # Extension X-Ray
 
-Extension X-Ray v0.4.0 is a local-first static security analyzer for two artifact types:
+Extension X-Ray v0.5.0 is a local-first static security analyzer for two artifact types:
 
 - Visual Studio Code and Cursor `.vsix` packages;
 - source repository `.zip` archives, including install hooks, GitHub Actions, editor/dev-container automation, and crypto-wallet risk patterns.
 
 It produces evidence-backed reports without executing uploaded code, installing dependencies, running hooks, checking out submodules, or sending source to a remote service. Findings describe observed behavior and confidence; there is deliberately no generic “trust score.”
 
-## What v0.4.0 includes
+## What v0.5.0 includes
 
 - Bounded ZIP extraction with traversal, link, duplicate-path, entry-count, file-size, decompression, and compression-ratio defenses.
 - SHA-256 identity, bounded metadata, complete admitted-file inventory, and literal JavaScript/TypeScript module relationships.
@@ -19,6 +19,8 @@ It produces evidence-backed reports without executing uploaded code, installing 
 - Supply Chain 2 generates a CycloneDX 1.6 SBOM from npm lockfiles, validates resolved versions and strong SRI hashes, and highlights install scripts, external registries, direct URL/Git dependencies, and conservative typo candidates.
 - Offline OSV advisory matching supports enumerated versions and `SEMVER` ranges. The bundled crypto-focused seed snapshot is deliberately marked incomplete and can be replaced with `XRAY_ADVISORY_DB`.
 - GitHub Actions supply-chain correlations cover `permissions: write-all`, OIDC credentials combined with mutable Actions, and direct secret interpolation into scripts.
+- CI Guard emits SARIF 2.1.0, evaluates TOML policies, compares reports against a baseline, records new/unchanged/resolved findings, and returns stable automation exit codes.
+- A reusable GitHub Actions workflow checks out its own implementation at the workflow commit SHA, scans only a tracked-files archive, uploads SARIF through a pinned CodeQL Action, and enforces policy after upload.
 - Hardening for valid seed-phrase word counts, same-job GitHub Actions correlation, multiline workflow injection, bounded combined findings, artifact-specific errors, and visible upload rejection.
 - Optional REA 6.7 static JavaScript enrichment with strict timeouts, bounded source selection, structured parsing, and independent native fallback.
 - Responsive React/Tailwind dashboard with VSIX/repository modes, severity context, evidence, inventory, dependency graph, and JSON download.
@@ -71,9 +73,20 @@ Open `http://localhost:5173`. Select **Extension VSIX** or **Repository ZIP** be
 .\.venv\Scripts\python -m app.cli .\samples\benign-extension.vsix --no-rea --output .\reports\benign-extension.json
 .\.venv\Scripts\python -m app.cli .\samples\suspicious-repository.zip --kind repository --output .\reports\suspicious-repository.json
 .\.venv\Scripts\python -m app.cli .\samples\benign-repository.zip --kind repository --no-rea --output .\reports\benign-repository.json
+.\.venv\Scripts\python -m app.cli .\samples\suspicious-repository.zip --kind repository --no-rea --output .\reports\ci-report.json --sarif .\reports\ci-report.sarif --policy .\examples\extension-xray.toml --policy-output .\reports\policy.json
 ```
 
 REA is used when its verified CLI is available unless `--no-rea` is supplied. See [docs/demo.md](docs/demo.md) for expected observations and manual checks.
+
+## CI, policy, baseline, and SARIF
+
+The CLI preserves its original behavior when no policy is configured. For automation, use `--fail-on`, a `.extension-xray.toml` policy, or the reusable workflow:
+
+```powershell
+.\.venv\Scripts\extension-xray .\repository.zip --kind repository --no-rea --output .\report.json --sarif .\report.sarif --fail-on high --min-confidence medium
+```
+
+Exit code `0` means the scan and policy passed, `1` means policy violations were found after outputs were written, and `2` means the scan or configuration could not be completed. When present in the working directory, `.extension-xray.toml` and `.extension-xray-baseline.json` are discovered automatically. See [docs/ci.md](docs/ci.md) for policy syntax, baseline lifecycle, report-only comparisons, SARIF upload, and the reusable workflow.
 
 ## Validation commands
 
@@ -114,8 +127,8 @@ npm run build
 - `GET /api/v1/repository-report-schema` — repository report JSON Schema
 - `GET /docs` — interactive local OpenAPI documentation
 
-The VSIX report remains schema `1.0.0`; the repository report is schema `1.1.0` with CycloneDX and supply-chain fields. Both include `analysis_kind` as a discriminator. The application version is `0.4.0`.
+The VSIX report remains schema `1.0.0`; the repository report is schema `1.1.0` with CycloneDX and supply-chain fields. Both include `analysis_kind` as a discriminator. CI diff and policy documents use schema `1.0.0`. The application version is `0.5.0`.
 
 ## Security model and limitations
 
-The repository scanner is an offline first-pass reviewer, not a sandbox or malware verdict. Advisory results are limited by the configured snapshot; no registry, advisory, provenance, or reputation request occurs during analysis. Static evidence cannot prove reachability, intent, or an end-to-end data flow, and a clean result is not a guarantee. The interchange formats follow the [OSV schema](https://ossf.github.io/osv-schema/) and [CycloneDX 1.6 JSON specification](https://github.com/CycloneDX/specification/blob/master/schema/bom-1.6.schema.json). See [SECURITY.md](SECURITY.md), [architecture](docs/architecture.md), and the [rule catalog](docs/security-rules.md).
+The repository scanner is an offline first-pass reviewer, not a sandbox or malware verdict. Advisory results are limited by the configured snapshot; no registry, advisory, provenance, or reputation request occurs during analysis. Static evidence cannot prove reachability, intent, or an end-to-end data flow, and a clean result is not a guarantee. The interchange formats follow the [OSV schema](https://ossf.github.io/osv-schema/), [CycloneDX 1.6 JSON specification](https://github.com/CycloneDX/specification/blob/master/schema/bom-1.6.schema.json), and [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html). See [SECURITY.md](SECURITY.md), [architecture](docs/architecture.md), and the [rule catalog](docs/security-rules.md).

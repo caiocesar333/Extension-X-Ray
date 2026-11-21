@@ -67,6 +67,12 @@ Advisory matching is only as complete and current as the local snapshot. Typosqu
 
 Repository reports are capped at 500 combined native and repository-specific findings. When the cap is reached, the report records an explicit limitation.
 
+## CI Guard policy semantics
+
+CI Guard does not create or reclassify security findings. It evaluates the existing rule severity, confidence, and ID against a versioned TOML policy after analysis completes. An explicit deny rule overrides the severity threshold; an ignored rule is excluded from failure. When a baseline is present, only fingerprints absent from the baseline are considered new for policy enforcement, while unchanged findings remain in JSON and SARIF.
+
+Exit code `1` means the configured policy rejected one or more new findings, not that Extension X-Ray proved the repository malicious. Exit code `2` is reserved for an incomplete analysis or invalid input/configuration.
+
 ## Adding a rule
 
 Keep patterns narrow, bound emitted findings, redact possible secrets before hashing or reporting, and add positive and benign regression cases. Prefer semantic REA evidence when genuinely present, but preserve native behavior when REA is unavailable. Update this catalog whenever a rule ID or meaning changes.

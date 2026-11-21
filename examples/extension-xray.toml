@@ -1,0 +1,18 @@
+schema_version = "1"
+
+[policy]
+fail_on = "high"
+minimum_confidence = "medium"
+
+# These rules always fail, even below the configured severity/confidence threshold.
+deny_rules = [
+  "CRYPTO-TX-001",
+  "CRYPTO-PROC-001",
+  "CRYPTO-CLIP-001",
+  "REP-DLX-001",
+]
+
+# Keep this list narrow and document every accepted risk in code review.
+ignore_rules = [
+  "SCM-TYPO-001",
+]

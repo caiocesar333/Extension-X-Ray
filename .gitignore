@@ -11,6 +11,7 @@ frontend/dist/
 frontend/coverage/
 *.tsbuildinfo
 reports/*.json
+reports/*.sarif
 samples/*.vsix
 samples/*.zip
 !.gitkeep

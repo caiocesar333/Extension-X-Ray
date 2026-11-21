@@ -32,6 +32,12 @@ The bundled advisory file is a small, crypto-focused seed snapshot and is explic
 
 Integrity confirms that a lockfile contains a strong SRI digest; it does not independently attest who published the package. External registry, install-script, typosquatting, and workflow findings require human review.
 
+## CI policy and SARIF boundary
+
+CI policy and baseline files are parsed as bounded TOML/JSON data and never executed. A baseline suppresses existing findings only for policy enforcement; it does not remove them from the current JSON or SARIF report. Ignoring or baselining a finding is a recorded acceptance decision, not proof that the behavior is safe.
+
+SARIF contains redacted evidence but can still disclose source paths and security behavior to the configured CI provider. Uploads must use an explicitly trusted destination and a least-privilege token. The reusable workflow installs Extension X-Ray from the immutable reusable-workflow SHA and archives tracked target files without installing or executing the target repository.
+
 ## Reporting a vulnerability
 
 Report vulnerabilities privately to the repository owner with reproduction steps and the affected version. Do not include real secrets, wallet keys, recovery phrases, or weaponized payloads. Prefer a minimal synthetic fixture using reserved destinations such as `example.invalid`.
@@ -40,7 +46,7 @@ Report vulnerabilities privately to the repository owner with reproduction steps
 
 - Native pattern rules can produce false positives and false negatives.
 - Static analysis generally cannot prove control-flow reachability or actual transmission.
-- Online dependency, provenance, and reputation lookups are outside the offline v0.4.0 scope.
+- Online dependency, provenance, and reputation lookups are outside the offline v0.5.0 scope.
 - The bundled advisory snapshot is intentionally incomplete and must not be treated as full vulnerability coverage.
 - Crypto data-flow tracking is bounded and intra-file; object properties, complex callbacks, reflection, and cross-module state may not resolve.
 - Source maps and dynamically constructed module names may be absent.

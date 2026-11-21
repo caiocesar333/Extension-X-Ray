@@ -12,7 +12,8 @@
 8. In `auto` or `required` mode, the REA adapter receives only the validated tree and bounded source list. It performs static JavaScript analysis; it does not run repository or extension code.
 9. Recognized REA graph data is merged with, but never replaces, native results. Errors become explicit status and limitations, and combined repository findings are capped at 500.
 10. Pydantic emits a discriminator-bearing report; the dashboard renders it and can download the report and CycloneDX BOM.
-11. Upload and extraction directories are removed when the request ends, including error paths.
+11. In CLI/CI use, `ci.py` can compare that report with a prior report, apply a data-only TOML policy, and produce SARIF 2.1.0 without re-reading extracted source.
+12. Upload and extraction directories are removed when the request ends, including error paths.
 
 ```text
 browser -> FastAPI upload boundary -> bounded ZIP extraction
@@ -31,10 +32,11 @@ browser -> FastAPI upload boundary -> bounded ZIP extraction
 - `repository_scanner.py`: supply-chain, CI, workspace automation, and Crypto Guard rules.
 - `crypto_guard.py`: wallet-family sources, secret redaction, bounded variable propagation, and crypto-specific sinks.
 - `supply_chain.py`: npm lockfile inventory, CycloneDX 1.6, offline OSV matching, integrity/provenance, and typo signals.
+- `ci.py`: stable finding fingerprints, report comparison, bounded policy parsing/evaluation, and SARIF 2.1.0 serialization.
 - `rea.py`: CLI discovery, timeout/resource arguments, output validation, and fallback.
 - `analyzer.py` / `repository_analyzer.py`: artifact-specific orchestration and report construction.
 - `main.py`: streaming HTTP boundary, API errors, CORS, health, and JSON Schemas.
-- `cli.py`: reproducible local report generation selected by `--kind`.
+- `cli.py`: artifact/report input, reproducible outputs, baseline and policy orchestration, and stable CI exit codes.
 
 ## Frontend modules
 

@@ -11,6 +11,7 @@ from .models import Confidence, FileEntry, Finding, FindingEvidence, Severity, S
 
 _MAX_TEXT_BYTES = 2 * 1024 * 1024
 _MAX_FINDINGS = 500
+_CI_CONTROL_FILES = {".extension-xray-baseline.json"}
 _TEXT_SUFFIXES = {
     ".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx",
     ".json", ".jsonc", ".yml", ".yaml", ".toml", ".sh", ".bash", ".zsh",
@@ -353,6 +354,8 @@ def scan_repository(root: Path, files: list[FileEntry]) -> RepositoryScanResult:
         path = entry.path
         pure = PurePosixPath(path)
         if "node_modules" in pure.parts or ".git" in pure.parts:
+            continue
+        if pure.name in _CI_CONTROL_FILES:
             continue
         is_known_text = entry.kind in {"javascript", "typescript", "json", "text", "script"} or pure.suffix.lower() in _TEXT_SUFFIXES or pure.name in {"Dockerfile", "Makefile", "yarn.lock"}
         if not is_known_text:

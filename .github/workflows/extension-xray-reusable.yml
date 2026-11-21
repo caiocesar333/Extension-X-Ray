@@ -1,0 +1,84 @@
+name: Extension X-Ray repository scan
+
+on:
+  workflow_call:
+    inputs:
+      fail-on:
+        description: Lowest severity that fails the job
+        required: false
+        type: string
+        default: high
+      minimum-confidence:
+        description: Lowest confidence considered by the severity threshold
+        required: false
+        type: string
+        default: medium
+      upload-sarif:
+        description: Upload results to GitHub Code Scanning when permissions allow it
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out target repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: target
+
+      - name: Check out the reusable workflow implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: _extension-xray
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: _extension-xray/backend/pyproject.toml
+
+      - name: Install Extension X-Ray
+        run: python -m pip install ./_extension-xray/backend
+
+      - name: Create a tracked-files archive
+        working-directory: target
+        run: git archive --format=zip --output="$GITHUB_WORKSPACE/extension-xray-target.zip" HEAD
+
+      - name: Analyze repository
+        id: xray
+        continue-on-error: true
+        working-directory: target
+        env:
+          XRAY_FAIL_ON: ${{ inputs.fail-on }}
+          XRAY_MINIMUM_CONFIDENCE: ${{ inputs.minimum-confidence }}
+        run: >-
+          extension-xray ../extension-xray-target.zip
+          --kind repository
+          --no-rea
+          --output ../extension-xray-report.json
+          --sarif ../extension-xray.sarif
+          --policy-output ../extension-xray-policy.json
+          --fail-on "$XRAY_FAIL_ON"
+          --min-confidence "$XRAY_MINIMUM_CONFIDENCE"
+
+      - name: Upload SARIF
+        if: >-
+          ${{ always() && inputs.upload-sarif && hashFiles('extension-xray.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          sarif_file: extension-xray.sarif
+          category: extension-xray/repository
+
+      - name: Enforce Extension X-Ray result
+        if: ${{ always() && steps.xray.outcome == 'failure' }}
+        run: exit 1

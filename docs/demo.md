@@ -39,6 +39,24 @@ Expected benign repository observations:
 
 The VSIX fixtures preserve the original analyzer behavior: the suspicious sample produces process, dynamic execution, environment, network, sensitive-path, and combination evidence, while the benign sample produces no findings.
 
+## CI Guard path
+
+Generate a SARIF file and observe policy exit code `1` for the suspicious repository:
+
+```powershell
+.\.venv\Scripts\python -m app.cli .\samples\suspicious-repository.zip --kind repository --no-rea --output .\reports\ci-report.json --sarif .\reports\ci-report.sarif --policy .\examples\extension-xray.toml --policy-output .\reports\policy.json
+$LASTEXITCODE
+```
+
+Use the generated report as its own baseline and verify that the same findings no longer fail the policy:
+
+```powershell
+.\.venv\Scripts\python -m app.cli .\reports\ci-report.json --kind report --baseline .\reports\ci-report.json --diff-output .\reports\ci-diff.json --policy .\examples\extension-xray.toml --policy-output .\reports\baselined-policy.json
+$LASTEXITCODE
+```
+
+Expected values are exit code `1` for the first command and `0` for the baselined comparison, with `new_count=0` and `resolved_count=0` in `ci-diff.json`.
+
 ## Dashboard path
 
 Start both development servers from the README and open `http://localhost:5173`.

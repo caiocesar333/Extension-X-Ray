@@ -2,69 +2,74 @@
 
 Updated: 2026-11-21
 
-## v0.4.0 Supply Chain 2 plan
+## v0.5.0 CI Guard plan
 
-- [x] Build a bounded npm lockfile inventory without invoking a package manager.
-- [x] Emit a downloadable CycloneDX 1.6 software bill of materials.
-- [x] Validate direct dependency coverage, exact-version agreement, resolved origins, and strong SRI integrity.
-- [x] Detect install-script, direct Git/URL/file/link/workspace, and conservative typosquatting signals.
-- [x] Match locked npm versions against a bounded offline OSV snapshot.
-- [x] Add GitHub Actions supply-chain correlations for broad permissions, OIDC, mutable Actions, and secret interpolation.
-- [x] Add a typed Supply Chain dashboard with advisory context, metrics, component inventory, and BOM download.
-- [x] Update fixtures, documentation, version metadata, report schema, and regression tests.
-- [x] Run the complete backend/frontend, CLI, REA, JSON, redaction, build, and HTTP validation matrix.
+- [x] Emit SARIF 2.1.0 with rule metadata, archive-relative locations, and stable partial fingerprints.
+- [x] Add bounded, versioned TOML policy with severity, confidence, deny-rule, and ignore-rule controls.
+- [x] Compare current and baseline reports as new, unchanged, and resolved findings.
+- [x] Apply policy only to new findings when a baseline is present without removing existing findings from JSON or SARIF.
+- [x] Define stable CLI exit codes for pass, policy violation, and operational/configuration failure.
+- [x] Support SARIF, diff, policy-result, and report-only CLI workflows.
+- [x] Add a reusable GitHub Actions workflow with immutable external Action pins and post-upload policy enforcement.
+- [x] Exclude a committed Extension X-Ray baseline from repository content rules.
+- [x] Update version metadata, examples, security documentation, architecture, and demo instructions.
+- [x] Run backend/frontend, CLI, workflow, REA, JSON, redaction, build, and HTTP validation.
 
-## v0.4.0 delivered behavior
+## v0.5.0 delivered behavior
 
-- `supply_chain.py` parses npm `package-lock.json` v1/v2/v3 within archive and output caps; it never installs, resolves, or executes a package.
-- Repository reports use schema `1.1.0` and embed a CycloneDX 1.6 BOM with package URLs, scope, admitted lockfile provenance, and valid SHA-256/384/512 hashes when present. Unscoped components omit the optional CycloneDX `group` property instead of emitting `null`.
-- Lockfile rules cover missing lockfiles, missing direct packages, exact manifest/lock disagreement, missing or invalid strong integrity, external artifact hosts, and dependencies marked with install scripts.
-- Direct dependency rules cover Git, GitHub/GitLab/Bitbucket, HTTP(S), file, link, and workspace sources. The typo signal is deliberately limited to one edit or an adjacent transposition against a small curated package list and remains low confidence.
-- Offline OSV matching supports enumerated versions and `SEMVER` events including `introduced`, `fixed`, `last_affected`, and `limit`. Missing, malformed, oversized, or capped databases produce explicit report limitations.
-- The bundled snapshot is a clearly labeled, incomplete crypto-relevant seed containing `GHSA-r9p9-mrjm-926w` / `CVE-2020-28498` for `elliptic` before `6.5.4`; operators can supply a broader local JSON file through `XRAY_ADVISORY_DB`.
-- GitHub Actions rules identify `permissions: write-all`, an OIDC write token combined with mutable Actions, and direct `secrets.*` interpolation into a `run` block.
-- Supply-chain evidence redacts credential-bearing URLs and token/password assignments before summaries, snippets, or finding IDs are emitted.
-- The dashboard exposes lockfile metrics, snapshot date and coverage, advisory matches, resolved components, and an independent `*.cdx.json` download.
-- Application/backend/frontend metadata is `0.4.0`; the VSIX schema remains `1.0.0` for compatibility.
+- `ci.py` owns bounded report/policy loading, normalized finding fingerprints, multiset report comparison, policy evaluation, and SARIF serialization.
+- SARIF 2.1.0 includes rule descriptors, severity-derived levels, confidence/impact properties, archive-relative URI-encoded locations, and `primaryLocationLineHash`. Locationless findings remain valid JSON/policy inputs and omit the empty SARIF `locations` property.
+- Fingerprints use rule ID, normalized path, redacted summary, and redacted snippet. Line numbers and a single archive wrapper directory are excluded so ordinary line movement and differently named source archives remain stable.
+- `.extension-xray.toml` supports `fail_on`, `minimum_confidence`, `deny_rules`, and `ignore_rules`. Unknown fields, invalid rule IDs, and deny/ignore overlap fail closed as configuration errors.
+- `.extension-xray-baseline.json` is discovered automatically. Existing findings remain in full outputs but are excluded from policy failure; diff output records new, unchanged, and resolved entries.
+- `--kind report` converts or compares already generated reports without rescanning an artifact. `--no-policy` and `--no-baseline` provide explicit control over automatic discovery.
+- Exit code `0` means analysis and policy passed, `1` means outputs were written but policy rejected findings, and `2` means analysis/configuration did not complete.
+- The reusable workflow checks out caller and analyzer separately, installs only the analyzer, archives only tracked target files, never runs target setup/build/test code, uploads SARIF through a pinned CodeQL Action, and enforces the saved scan outcome afterward.
+- Reusable-workflow source is resolved through `job.workflow_repository` and `job.workflow_sha`; all external Actions are pinned to full 40-character commit SHAs.
+- A standard committed baseline is inventoried but excluded from repository source rules so archived evidence cannot be rediscovered as current code.
+- Application/backend/frontend metadata is `0.5.0`. VSIX report schema remains `1.0.0`, repository report schema remains `1.1.0`, and CI diff/policy documents use `1.0.0`.
 
 ## Preserved baseline
 
-- Safe bounded ZIP ingestion, SHA-256 identity, isolated temporary extraction, cleanup, and no artifact execution.
-- VSIX capability rules plus repository lifecycle, download/execute, GitHub Actions, VS Code, dev-container, and Crypto Guard 2 analysis.
-- Optional bounded REA enrichment with an independent native fallback.
-- Typed VSIX/repository dashboard, evidence viewer, inventory, dependency graph, and full-report JSON export.
+- Safe bounded ZIP ingestion, SHA-256 identity, isolated temporary extraction, cleanup, and no uploaded artifact execution.
+- VSIX capability rules, Repo X-Ray automation checks, Crypto Guard 2 flow signals, and Supply Chain 2 SBOM/advisory analysis.
+- Optional bounded REA enrichment with independent native fallback.
+- Typed dashboard, evidence viewer, inventory, dependency graph, CycloneDX download, and report JSON export.
 - Package managers, hooks, submodules, builds, tests, workflows, and uploaded code are never executed.
 
 ## Environment observations
 
-- Python 3.15 is available in `.venv`; plain system Python remains unsuitable for the installed local binary dependencies.
-- Node.js 24.21.0, npm 11.19.0, and Vite 6.4.6 are available.
-- REA CLI 6.7.0 completed the bounded suspicious-repository analysis. The standalone FastAPI service uses the verified CLI adapter and does not require the MCP connection.
-- The managed Windows sandbox blocks Python-created temporary directories and esbuild subprocesses. The affected validation commands were rerun outside that sandbox without changing application behavior.
+- Python 3.15 is active in `.venv`; Node.js 24.21.0, npm 11.19.0, and Vite 6.4.6 are available.
+- REA CLI 6.7.0 completed both suspicious synthetic analyses. The CI workflow deliberately uses the native fallback to avoid requiring REA on hosted runners.
+- The managed Windows sandbox blocks Python-created temporary directories and esbuild subprocesses. Affected validation commands were rerun outside that sandbox without changing application behavior.
+- The reusable workflow YAML parsed successfully as one `workflow_call` trigger, one job, and eight steps.
 
-## v0.4.0 validation log
+## v0.5.0 validation log
 
-- Python syntax compilation: passed for backend, tests, and the fixture generator.
-- Backend: `49 passed`; the only warning is the upstream Starlette `TestClient`/`httpx` deprecation.
+- Python syntax compilation: passed for backend, tests, and fixture generator.
+- Backend: `61 passed`; the only warning is the upstream Starlette `TestClient`/`httpx` deprecation.
 - Frontend TypeScript typecheck and ESLint: passed.
 - Frontend Vitest: `7 passed` across 3 files.
 - Frontend production build: passed; 1,584 modules transformed, with 180.99 kB JavaScript and 19.16 kB CSS before gzip.
-- Regenerated benign/suspicious VSIX and repository ZIP fixtures.
-- Suspicious VSIX analysis: 8 findings; benign VSIX fallback: zero findings.
-- Suspicious repository analysis: 27 findings, 3 SBOM components, 2 valid integrity hashes, 1 missing integrity value, 1 external origin, 1 install-script package, and 1 offline advisory match.
-- REA 6.7.0 completed the suspicious repository scan on 7 sources with Evidence ID `ev_5cbb2c87dc5fcc2ac1eab01a2a12803322701b95f69223041767ec5c3b81e5fd`.
-- Benign repository fallback analysis: zero findings, 1 SBOM component, and no advisory matches.
-- All four JSON reports round-tripped through their Pydantic models. The synthetic recovery phrase, encoded key, registry password, and registry token were absent from serialized findings/reports.
-- HTTP smoke test: health `200` with version `0.4.0`; repository upload `200`, schema `1.1.0`, 27 findings, 3 SBOM components, and REA `completed`/`used=true`.
+- Regenerated and analyzed all four documented synthetic artifacts.
+- Suspicious VSIX: 8 findings; REA 6.7.0 completed on 2 sources with Evidence ID `ev_90818b03d88752e5263e9b2e92bc12fc6546dcc12aa31e12529d66c847c73e71`.
+- Suspicious repository: 27 findings; REA 6.7.0 completed on 7 sources with Evidence ID `ev_a877eafc3e06601eaf03594696ac7179c77058eab562b2519066d3e9d6d04ccb`.
+- Benign VSIX and repository native-fallback analyses: zero findings.
+- All four JSON reports round-tripped through their Pydantic models; the synthetic recovery phrase and encoded key were absent from serialized reports.
+- CI policy smoke: exit `1` after writing report, SARIF, and policy output; 17 violations from 27 considered findings.
+- Baseline smoke: exit `0`, 0 new, 27 unchanged, 0 resolved, and only `unchanged` SARIF baseline states.
+- Operational-error smoke: a missing input returned exit `2` with a bounded error message.
+- SARIF smoke: version 2.1.0, 27 results, 26 rule descriptors, `.github` paths preserved, and no synthetic secret values.
+- HTTP smoke: health `200` with version `0.5.0`; repository upload `200`, schema `1.1.0`, 27 findings, 3 SBOM components, and REA `completed`.
 
 ## Remaining limitations
 
-- Static evidence does not establish runtime reachability, malicious intent, or complete interprocedural data flow.
-- Crypto propagation remains intra-file and syntax-bounded; object properties, callbacks, reflection, dynamic dispatch, and cross-module state may not resolve.
-- CycloneDX components describe lockfile records and hashes, not independently downloaded or verified artifacts.
-- The bundled OSV seed is intentionally incomplete and will become stale; production use requires a maintained offline database and an explicit refresh process.
-- Advisory matching supports exact semantic versions and common OSV `SEMVER` events, not every ecosystem-specific version edge case.
-- Registry ownership, npm provenance attestations, signatures, maintainer reputation, and online revocation are not checked.
-- Typosquatting and pattern rules can produce false positives or false negatives and always require human review.
-- REA enriches JavaScript/TypeScript structure but does not replace native rules; native binaries are inventoried but not decompiled.
-- A clean report is not a security guarantee.
+- Static findings still do not establish runtime reachability, malicious intent, or complete interprocedural data flow.
+- Fingerprints intentionally change when evidence summary/snippet changes; they are stable identifiers, not semantic equivalence proofs.
+- A baseline or ignore rule is accepted risk and can hide policy failure if reviewed carelessly. Both require security review and protected-branch controls.
+- GitHub Code Scanning cannot display a SARIF result without a source location, although JSON policy evaluation still includes it.
+- SARIF upload from fork pull requests is skipped because their token cannot receive `security-events: write`; local policy enforcement still runs.
+- The reusable workflow's self-checkout context is GitHub Cloud-specific. Older GitHub Enterprise Server versions require explicit pinned CLI steps.
+- The bundled OSV seed remains intentionally incomplete and must be refreshed or replaced for production coverage.
+- Registry ownership, npm attestations/signatures, maintainer reputation, and online revocation are not verified.
+- A clean or baselined report is not a security guarantee.
