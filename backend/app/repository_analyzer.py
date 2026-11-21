@@ -73,6 +73,7 @@ class RepositoryAnalyzer:
                 limitations.append(rea_result.limitation)
             limitations.extend((
                 "Repository analysis is static and cannot prove runtime reachability or malicious intent.",
+                "Crypto Guard flow tracking is bounded, intra-file, and limited to common JavaScript, TypeScript, and Python assignment/call forms.",
                 "Package managers, lifecycle scripts, hooks, submodules, builds, tests, and repository code were not executed.",
                 "Known-vulnerability and online reputation data are outside the current offline analysis scope.",
             ))

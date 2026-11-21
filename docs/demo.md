@@ -25,6 +25,7 @@ Expected suspicious repository observations:
 - critical lifecycle download/execution and privileged-workflow signals;
 - mutable Action, VS Code task, and dev-container findings;
 - wallet-path, wallet/network, clipboard, and redacted possible-secret findings;
+- Crypto Guard 2 evidence for an encoded key, wallet environment access, alias-based network flow, and process-argument flow;
 - explicit REA completion when available, otherwise a fallback limitation;
 - a valid schema `1.0.0` report that round-trips through `RepositoryAnalysisReport`.
 

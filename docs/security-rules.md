@@ -34,11 +34,17 @@ Rules identify evidence that merits review. A match is not a malware verdict.
 | Rule | Severity | Signal |
 | --- | --- | --- |
 | `CRYPTO-SECRET-001` | Critical | Private-key marker or 12/15/18/21/24-word recovery-phrase-like assignment; evidence is redacted |
-| `CRYPTO-WALLET-001` | High | Reference to common wallet, keystore, or signing-identity storage |
-| `CRYPTO-TX-001` | Critical | Wallet-sensitive source and network capability in the same file |
-| `CRYPTO-CLIP-001` | Critical | Clipboard read/write plus a cryptocurrency address pattern in the same file |
+| `CRYPTO-SECRET-002` | Critical | Private-key-named assignment with a hex/base58 wallet-key-like value; evidence is redacted |
+| `CRYPTO-ENV-001` | Medium | Environment variable name indicates a wallet key, seed, mnemonic, or recovery phrase |
+| `CRYPTO-WALLET-001` | High | Bitcoin, Ethereum, Solana, Electrum, Exodus, Atomic, or browser-wallet storage path |
+| `CRYPTO-TX-001` | Critical | Bounded intra-file tracking connects wallet-sensitive input to a network call |
+| `CRYPTO-PROX-001` | High | Wallet-sensitive and network capabilities are colocated without a resolved bounded flow |
+| `CRYPTO-PROC-001` | Critical | Bounded intra-file tracking connects wallet-sensitive input to process arguments |
+| `CRYPTO-CLIP-001` | Critical | Clipboard read followed by a write of an address literal or tracked address-bearing variable |
 
 Combination rules raise review priority but still describe proximity, not a proven end-to-end data flow. Every finding carries a file/line when available, bounded evidence, confidence, possible impact, and an investigation step.
+
+Crypto flow rules are stronger than proximity rules but remain static: they track common assignments and aliases for at most four propagation rounds inside one file. They do not resolve arbitrary object properties, dynamic dispatch, reflection, or cross-module state.
 
 Repository reports are capped at 500 combined native and repository-specific findings. When the cap is reached, the report records an explicit limitation.
 

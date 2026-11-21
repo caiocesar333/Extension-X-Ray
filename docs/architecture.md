@@ -7,10 +7,11 @@
 3. The shared archive inspector validates ZIP structure and manually expands admitted members into a second isolated directory.
 4. The selected analyzer reads bounded metadata: `extension/package.json` for VSIX or the shallowest non-`node_modules` `package.json` plus repository manifest inventory.
 5. The native source scanner reads bounded JavaScript/TypeScript and reconstructs literal imports. Repository mode also scans package scripts, workflows, editor/dev-container configuration, shell patterns, and crypto-related correlations.
-6. In `auto` or `required` mode, the REA adapter receives only the validated tree and bounded source list. It performs static JavaScript analysis; it does not run repository or extension code.
-7. Recognized REA graph data is merged with, but never replaces, native results. Errors become explicit status and limitations, and combined repository findings are capped at 500.
-8. Pydantic emits a discriminator-bearing report; the dashboard renders it and can download it unchanged.
-9. Upload and extraction directories are removed when the request ends, including error paths.
+6. `crypto_guard.py` performs bounded intra-file JavaScript/TypeScript/Python variable propagation from wallet sources into network, process, and clipboard sinks. It redacts secret-shaped evidence before any scanner constructs a finding.
+7. In `auto` or `required` mode, the REA adapter receives only the validated tree and bounded source list. It performs static JavaScript analysis; it does not run repository or extension code.
+8. Recognized REA graph data is merged with, but never replaces, native results. Errors become explicit status and limitations, and combined repository findings are capped at 500.
+9. Pydantic emits a discriminator-bearing report; the dashboard renders it and can download it unchanged.
+10. Upload and extraction directories are removed when the request ends, including error paths.
 
 ```text
 browser -> FastAPI upload boundary -> bounded ZIP extraction
@@ -27,6 +28,7 @@ browser -> FastAPI upload boundary -> bounded ZIP extraction
 - `repository_metadata.py`: ecosystem, manifest, scripts, workflow, and workspace metadata.
 - `scanner.py`: common source rules, evidence locations, capability combinations, and dependency graph.
 - `repository_scanner.py`: supply-chain, CI, workspace automation, and Crypto Guard rules.
+- `crypto_guard.py`: wallet-family sources, secret redaction, bounded variable propagation, and crypto-specific sinks.
 - `rea.py`: CLI discovery, timeout/resource arguments, output validation, and fallback.
 - `analyzer.py` / `repository_analyzer.py`: artifact-specific orchestration and report construction.
 - `main.py`: streaming HTTP boundary, API errors, CORS, health, and JSON Schemas.

@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from .crypto_guard import redact_sensitive_evidence
 from .models import (
     Confidence,
     FileEntry,
@@ -183,7 +184,8 @@ def _finding(
     source: str = "native",
 ) -> Finding:
     line, column, snippet = _line_details(text, offset)
-    digest = hashlib.sha256(f"{rule.rule_id}:{path}:{line}:{snippet}".encode()).hexdigest()[:16]
+    safe_snippet = redact_sensitive_evidence(snippet)
+    digest = hashlib.sha256(f"{rule.rule_id}:{path}:{line}:{safe_snippet}".encode()).hexdigest()[:16]
     return Finding(
         id=f"finding-{digest}",
         rule_id=rule.rule_id,
@@ -191,7 +193,10 @@ def _finding(
         severity=rule.severity,
         confidence=rule.confidence,
         description=rule.description,
-        evidence=FindingEvidence(summary=summary or f"Matched static pattern for {rule.rule_id}", snippet=snippet),
+        evidence=FindingEvidence(
+            summary=summary or f"Matched static pattern for {rule.rule_id}",
+            snippet=safe_snippet,
+        ),
         location=SourceLocation(file=path, line=line, column=column),
         potential_impact=rule.impact,
         guidance=rule.guidance,

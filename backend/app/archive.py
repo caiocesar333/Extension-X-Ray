@@ -31,6 +31,8 @@ def _kind_for(path: str) -> str:
         return "javascript"
     if suffix in {".ts", ".mts", ".cts", ".tsx"}:
         return "typescript"
+    if suffix == ".py":
+        return "python"
     if suffix in {".json", ".jsonc"}:
         return "json"
     if suffix in {".md", ".txt", ".html", ".css", ".svg", ".yml", ".yaml", ".toml"}:

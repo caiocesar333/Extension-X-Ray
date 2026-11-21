@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from .crypto_guard import redact_sensitive_evidence, scan_crypto_file
 from .models import Confidence, FileEntry, Finding, FindingEvidence, Severity, SourceLocation
 
 _MAX_TEXT_BYTES = 2 * 1024 * 1024
@@ -13,24 +14,9 @@ _MAX_FINDINGS = 500
 _TEXT_SUFFIXES = {
     ".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx",
     ".json", ".jsonc", ".yml", ".yaml", ".toml", ".sh", ".bash", ".zsh",
-    ".ps1", ".bat", ".cmd", ".dockerfile", ".env", ".txt",
+    ".ps1", ".bat", ".cmd", ".py", ".dockerfile", ".env", ".txt",
 }
 _NETWORK = re.compile(r"\bfetch\s*\(|\b(?:https?|axios)\s*\.\s*(?:get|post|request)\s*\(|\b(?:curl|wget|Invoke-WebRequest)\b", re.IGNORECASE)
-_WALLET_PATH = re.compile(
-    r"(?:wallet\.dat|[/\\](?:\.bitcoin|\.ethereum|\.config[/\\]solana)(?:[/\\]|['\"])|"
-    r"[/\\](?:keystore|wallets?)(?:[/\\]|['\"])|Local Extension Settings)",
-    re.IGNORECASE,
-)
-_PRIVATE_KEY = re.compile(r"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----")
-_MNEMONIC_ASSIGNMENT = re.compile(
-    r"\b(?:seedPhrase|seed_phrase|mnemonic|recoveryPhrase)\b\s*[:=]\s*['\"]([^'\"\r\n]{40,500})['\"]",
-    re.IGNORECASE,
-)
-_MNEMONIC_WORD_COUNTS = {12, 15, 18, 21, 24}
-_MNEMONIC_WORD = re.compile(r"[A-Za-z]{2,16}")
-_CLIPBOARD_READ = re.compile(r"(?:clipboard\s*\.\s*readText|readClipboard|Get-Clipboard)\s*\(?", re.IGNORECASE)
-_CLIPBOARD_WRITE = re.compile(r"(?:clipboard\s*\.\s*writeText|writeClipboard|Set-Clipboard)\s*\(?", re.IGNORECASE)
-_CRYPTO_ADDRESS = re.compile(r"(?:\b0x[a-fA-F0-9]{40}\b|\bbc1[a-zA-HJ-NP-Z0-9]{20,90}\b)")
 _DOWNLOAD_EXEC = re.compile(
     r"(?:curl|wget|Invoke-WebRequest)[^\r\n|;]{0,500}(?:\||;|&&)\s*(?:sh|bash|zsh|powershell|pwsh|cmd)\b|"
     r"powershell(?:\.exe)?\s+(?:-[Ee]ncodedCommand|-enc)\b",
@@ -53,29 +39,6 @@ def _line_details(text: str, offset: int) -> tuple[int, int, str]:
     return line, offset - start + 1, text[start:end].strip().replace("\x00", "")[:320]
 
 
-def _redact(snippet: str) -> str:
-    if _PRIVATE_KEY.search(snippet):
-        return "[REDACTED: private key material]"
-    if _MNEMONIC_ASSIGNMENT.search(snippet):
-        return re.sub(
-            r"(['\"])[^'\"]+\1",
-            "\"[REDACTED: possible recovery phrase]\"",
-            snippet,
-            count=1,
-        )
-    return snippet
-
-
-def _mnemonic_assignment(text: str) -> re.Match[str] | None:
-    for match in _MNEMONIC_ASSIGNMENT.finditer(text):
-        words = match.group(1).split()
-        if len(words) in _MNEMONIC_WORD_COUNTS and all(
-            _MNEMONIC_WORD.fullmatch(word) for word in words
-        ):
-            return match
-    return None
-
-
 def _finding(
     *,
     rule_id: str,
@@ -92,7 +55,7 @@ def _finding(
     summary: str,
 ) -> Finding:
     line, column, snippet = _line_details(text, offset)
-    safe_snippet = _redact(snippet)
+    safe_snippet = redact_sensitive_evidence(snippet)
     digest = hashlib.sha256(f"{rule_id}:{path}:{line}:{safe_snippet}".encode()).hexdigest()[:16]
     return Finding(
         id=f"finding-{digest}",
@@ -337,67 +300,6 @@ def _scan_repository_config(path: str, text: str, findings: list[Finding]) -> No
             ))
 
 
-def _scan_crypto(path: str, text: str, findings: list[Finding]) -> None:
-    private_key = _PRIVATE_KEY.search(text)
-    mnemonic = _mnemonic_assignment(text)
-    wallet_path = _WALLET_PATH.search(text)
-    network = _NETWORK.search(text)
-    clipboard_read = _CLIPBOARD_READ.search(text)
-    clipboard_write = _CLIPBOARD_WRITE.search(text)
-    crypto_address = _CRYPTO_ADDRESS.search(text)
-    sensitive = private_key or mnemonic or wallet_path
-    if private_key or mnemonic:
-        match = private_key or mnemonic
-        assert match is not None
-        _append(findings, _finding(
-            rule_id="CRYPTO-SECRET-001",
-            title="Possible private wallet material in repository",
-            severity=Severity.critical,
-            confidence=Confidence.high if private_key else Confidence.medium,
-            description="The source contains a private-key marker or a recovery-phrase-like assignment.",
-            impact="Anyone with repository access may be able to control the associated assets.",
-            guidance="Assume exposed material is compromised, move assets to a new wallet, and remove it from repository history.",
-            path=path, text=text, offset=match.start(), tags=("crypto", "secret", "wallet"),
-            summary="Potential wallet secret detected; evidence is redacted.",
-        ))
-    if wallet_path:
-        _append(findings, _finding(
-            rule_id="CRYPTO-WALLET-001",
-            title="Wallet storage path access",
-            severity=Severity.high,
-            confidence=Confidence.medium,
-            description="The source references a path commonly associated with local wallet material.",
-            impact="Reachable file access may expose wallet databases, keystores, or signing identities.",
-            guidance="Trace the concrete filesystem operation and determine whether the path can leave the host.",
-            path=path, text=text, offset=wallet_path.start(), tags=("crypto", "filesystem", "wallet"),
-            summary="A wallet-related local path is referenced.",
-        ))
-    if sensitive and network:
-        _append(findings, _finding(
-            rule_id="CRYPTO-TX-001",
-            title="Potential wallet data exfiltration chain",
-            severity=Severity.critical,
-            confidence=Confidence.high,
-            description="Wallet-sensitive material and outbound network capability occur in the same source file.",
-            impact="If the values flow together, wallet credentials or local wallet files could be transmitted.",
-            guidance="Trace data from the sensitive source into every request body, URL, header, and process argument.",
-            path=path, text=text, offset=network.start(), tags=("crypto", "network", "dangerous-combination"),
-            summary="Wallet-sensitive access and a network sink are colocated.",
-        ))
-    if clipboard_read and clipboard_write and crypto_address:
-        _append(findings, _finding(
-            rule_id="CRYPTO-CLIP-001",
-            title="Potential clipboard address replacement",
-            severity=Severity.critical,
-            confidence=Confidence.high,
-            description="The source reads and writes the clipboard while containing a cryptocurrency address pattern.",
-            impact="A copied payment address could be replaced before the user pastes it.",
-            guidance="Trace the clipboard transformation and verify every replacement destination and trigger.",
-            path=path, text=text, offset=clipboard_write.start(), tags=("crypto", "clipboard", "address-replacement"),
-            summary="Clipboard read/write and a cryptocurrency address occur in the same file.",
-        ))
-
-
 def scan_repository(root: Path, files: list[FileEntry]) -> RepositoryScanResult:
     findings: list[Finding] = []
     limitations: list[str] = []
@@ -422,7 +324,8 @@ def scan_repository(root: Path, files: list[FileEntry]) -> RepositoryScanResult:
         if ".github" in pure.parts and "workflows" in pure.parts and pure.suffix.lower() in {".yml", ".yaml"}:
             _scan_workflow(path, text, findings)
         _scan_repository_config(path, text, findings)
-        _scan_crypto(path, text, findings)
+        for crypto_finding in scan_crypto_file(path, text):
+            _append(findings, crypto_finding)
         download = _DOWNLOAD_EXEC.search(text)
         if download:
             _append(findings, _finding(

